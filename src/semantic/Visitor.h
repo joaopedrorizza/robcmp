@@ -37,6 +37,9 @@ class NamedConst;
 class MemCopy;
 class Enum;
 class BitCast;
+class TemplateDecl;
+class TemplateParam;
+class TemplateFunctionCall;
 
 #define VISITOR_DECLAREP(T, P) \
 	virtual Node *visit(T& n) { return visit((P&)n); } \
@@ -89,6 +92,9 @@ public:
 	VISITOR_DECLARE(Enum)
 	VISITOR_DECLARE(UpdateArray)
 	VISITOR_DECLARE(BitCast)
+	VISITOR_DECLARE(TemplateDecl)
+	VISITOR_DECLARE(TemplateParam)
+	VISITOR_DECLARE(TemplateFunctionCall)
 
 };
 

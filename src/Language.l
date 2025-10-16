@@ -44,6 +44,9 @@ EXP ([Ee][-+]?[0-9]+)?
 "implements"			{ return TOK_IMPL; }
 "use"					{ return TOK_USE; }
 
+"template"				{ return TOK_TEMPLATE; }
+"typename"				{ return TOK_TYPENAME; }
+
 "inline"				{ return TOK_INLINE; }
 "noinline"				{ return TOK_NOINLINE; }
 "weak"					{ return TOK_WEAK; }

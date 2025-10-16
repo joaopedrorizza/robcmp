@@ -18,7 +18,9 @@
 %type <node> term term2 expr factor stmt condblock whileblock logicexpr
 %type <node> logicterm logicfactor TOK_AND TOK_OR event unary logicunary
 %type <node> bind asminline
-%type <strings> type_impls
+%type <node> template_param
+%type <nodes> template_param_list
+%type <strings> type_impls type_arg_list
 
 %type <ae> element
 %type <aes> elements relements array
@@ -130,6 +132,14 @@ function_impl : TOK_IDENTIFIER[type] TOK_IDENTIFIER[id] '(' function_params ')' 
 	$$ = func;
 }
 
+function_impl : TOK_TEMPLATE '<' template_param_list[tpl] '>' TOK_IDENTIFIER[type] TOK_IDENTIFIER[id] '(' function_params[fp] ')' function_attributes[fa] '{' stmts[s] '}'[ef] {
+    FunctionImpl *innerFunc = new FunctionImpl(buildTypes->getType($type, true), $id, $fp,
+        std::move(*$s), @id, @ef);
+    innerFunc->setAttributes($fa);
+    TemplateDecl *tplDecl = new TemplateDecl($tpl, innerFunc, @TOK_TEMPLATE); // ✅ sem cast
+    $$ = tplDecl;
+}
+
 function_attributes: function_attributes[fas] ',' function_attribute[fa] {
 	$fas->addAttribute($fa);
 	$$ = $fas;
@@ -153,6 +163,43 @@ function_attribute
 	| TOK_DEBUGONLY						{ $$ = new FunctionAttribute(fa_debugonly, ""); }
 	| TOK_NOOPT							{ $$ = new FunctionAttribute(fa_noopt, ""); }
 	| TOK_SECTION TOK_IDENTIFIER[id]	{ $$ = new FunctionAttribute(fa_section, $id); }
+
+/* Template */
+
+// MODIFICADO: template_param_list (retorna vetor de Node* - TemplateParamNode)
+template_param_list : template_param_list[list] ',' template_param[param] {
+	$list->push_back($param);
+	$$ = $list;
+}
+
+template_param_list : template_param[param] {
+	$$ = new vector<Node*>(); // Vetor de TemplateParamNod
+	$$->push_back($param);
+}
+
+//template_param (cria e retorna o nó)
+template_param
+    : TOK_TYPENAME TOK_IDENTIFIER[id] { 
+        $$ = new TemplateParamNode(TP_TYPE, $id, @TOK_TYPENAME); 
+    }
+    | TOK_TYPE TOK_IDENTIFIER[id] { 
+        // TP_TYPE ou TP_CLASS, dependendo se você distingue semanticamente
+        $$ = new TemplateParamNode(TP_TYPE, $id, @TOK_TYPE); 
+    }
+    // Adicionando suporte a Parâmetros de Não-Tipo (Non-Type Parameters)
+    | TOK_IDENTIFIER[type] TOK_IDENTIFIER[id] { 
+        // Isto representa 'int N', onde $type é 'int' e $id é 'N'
+        $$ = new TemplateParamNode(
+            TP_NON_TYPE,
+            $id,
+            buildTypes->getType($type, true),
+            @id
+        ); 
+    }
+;
+
+type_arg_list : TOK_IDENTIFIER { $$ = new vector<string>(); $$->push_back($1); }
+	| type_arg_list ',' TOK_IDENTIFIER { $1->push_back($3); $$ = $1; }
 
 event : TOK_QUANDO TOK_INTEGER TOK_ESTA TOK_INTEGER '{' stmts '}'[ef] {	
 				/*char funcname[100];
@@ -478,6 +525,11 @@ call_or_cast : ident_or_xident[id] '(' paramscall ')' {
 	} else {
 		$$ = new FunctionCall($id, $paramscall, @id);
 	}
+	$$->setLocation(@id);
+}
+
+call_or_cast : ident_or_xident[id] '<' type_arg_list[tpl] '>' '(' paramscall ')' {
+	$$ = new TemplateFunctionCall($id, std::move(*$tpl), $paramscall, @id);
 	$$->setLocation(@id);
 }
 
