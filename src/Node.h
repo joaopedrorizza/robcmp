@@ -100,6 +100,7 @@ public:
 	friend class MemCopy;
 	friend class PropagateTypes;
 	friend class IdentifyVirtualDispatch;
+	friend class ExpandTemplates;
 };
 
 class NamedNode: public Node {

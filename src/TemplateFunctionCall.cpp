@@ -20,6 +20,7 @@ extern Program *program;
 Value *TemplateFunctionCall::generate(FunctionImpl *func,
                                       BasicBlock *block,
                                       BasicBlock *allocblock) {
+    /*
     RobDbgInfo.emitLocation(this);
 
     std::string baseName = ident.getFullName();
@@ -51,14 +52,13 @@ Value *TemplateFunctionCall::generate(FunctionImpl *func,
         // 1.1 Busca o TemplateDecl original
         TemplateDecl *templDecl = nullptr;
         for (Node *child : program->children()) {
-    templDecl = dynamic_cast<TemplateDecl*>(child);
-    if (templDecl) {
-        std::cerr << "Found TemplateDecl with fnImpl name: " << templDecl->fnImpl->getFinalName() << std::endl;
-    }
-    if (templDecl && templDecl->fnImpl->getFinalName() == baseName)
-        break;
-}
-
+            templDecl = dynamic_cast<TemplateDecl*>(child);
+            if (templDecl) {
+                std::cerr << "Found TemplateDecl with fnImpl name: " << templDecl->fnImpl->getFinalName() << std::endl;
+            }
+            if (templDecl && templDecl->fnImpl->getFinalName() == baseName)
+                break;
+        }
 
         if (!templDecl) {
             yyerrorcpp("Template function " + baseName + " not defined.", this);
@@ -121,6 +121,8 @@ Value *TemplateFunctionCall::generate(FunctionImpl *func,
     // ... (Propaga tipo de retorno, já OK) ...
 
     return val;
+    */
+    return nullptr;
 }
 
 Node* TemplateFunctionCall::accept(Visitor& v) {

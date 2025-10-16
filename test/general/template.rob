@@ -1,0 +1,10 @@
+
+template<typename T>
+void swap(T u, T v) {
+    return;
+}
+
+int16 main() {
+    swap#int8(12, 25);
+    return 0;
+}

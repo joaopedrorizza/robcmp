@@ -289,6 +289,10 @@ Node* PropagateTypes::visit(FunctionImpl& n) {
     return NULL;
 }
 
+Node* PropagateTypes::visit(TemplateDecl& n) {
+    return NULL;
+}
+
 Node* PropagateTypes::visit(Return& n) {
     if (!n.value()){
         n.dt = tvoid;

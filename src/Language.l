@@ -108,6 +108,8 @@ EXP ([Ee][-+]?[0-9]+)?
 ","						{ return ','; }
 ";"						{ return ';'; }
 
+"#"						{ return '#'; }
+
 {ID}					{ yylval->ident = strndup(yytext, yyleng); 
 						  return TOK_IDENTIFIER; }
 

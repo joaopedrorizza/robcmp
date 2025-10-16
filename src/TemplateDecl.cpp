@@ -13,12 +13,62 @@ Node* TemplateDecl::accept(Visitor &v) {
     return v.visit(*this);
 }
 
-FunctionImpl* TemplateDecl::instantiate(const std::string &instantiatedName, 
-                                        const std::vector<std::string> &concreteTypes) {
+string TemplateDecl::mangleName(string baseName, string returnType, vector<string> &params) {
+    //MONOMORFIZAÇÃO
+    // Monta o nome instanciado: Exemplo: swap<int8,int16>
+    // Este nome é necessário para o linker e para o cache.
+    std::string instantiatedName = baseName + "<";
+    for (size_t i = 0; i < params.size(); ++i) {
+        instantiatedName += params[i];
+        if (i + 1 < params.size())
+            instantiatedName += ",";
+    }
+    instantiatedName += ">";
+    return instantiatedName;
+}
+
+Node* TemplateDecl::generateFor(const vector<string> &concreteTypes) {
+    
     if (params.size() != concreteTypes.size()) {
         yyerrorcpp("Template instantiation failed: mismatched parameter count.", this);
         return nullptr;
     }
+
+    //TODO: Verificar se o template foi instanciado para os tipos concretos recebidos. Se sim, apenas retornar. Se não, deixa continuar abaixo.
+
+    std::map<std::string, DataType> substitutionMap;
+    for (size_t i = 0; i < params.size(); ++i) {
+        std::string paramName = params[i]->getName();
+        DataType dt = buildTypes->getType(concreteTypes[i]);
+        if (dt == BuildTypes::undefinedType) {
+            yyerrorcpp("Unknown type '" + concreteTypes[i] + "' in template instantiation.", this);
+            return nullptr;
+        }
+        substitutionMap[paramName] = dt;
+        //std::cerr << "Template param: " << paramName << " → " << buildTypes->name(dt) << std::endl;
+    }
+
+    // TODO: encontra o tipo de retorno da função, no substitutionMap, se for parâmetro
+    DataType rdt = buildTypes->getType(templ_dt);
+    if (rdt == BuildTypes::undefinedType) {
+        yyerrorcpp("Unknown type '" + templ_dt + "' in template instantiation.", this);
+        return nullptr;
+    }
+
+
+    //FunctionImpl *fi = new FunctionImpl(rdt, 
+    //DataType dt, string name, FunctionParams *fp, vector<Node*> &&stmts, location_t loc, 
+	//	location_t ef, bool constructor = false
+    //return fi;
+    // depois de implementar, você vai ver um .ll que apresenta a função concreta, mas a
+    // chamada vai ser removida (por hora)
+
+    return nullptr;
+}
+
+/*FunctionImpl* TemplateDecl::instantiate(const std::string &instantiatedName, 
+                                        const std::vector<std::string> &concreteTypes) {
+    ...
 
     std::map<std::string, DataType> substitutionMap;
     for (size_t i = 0; i < params.size(); ++i) {
@@ -56,6 +106,7 @@ FunctionImpl* TemplateDecl::instantiate(const std::string &instantiatedName,
 
     std::cerr << "Finished type substitution for: " << concreteFunc->getName() << std::endl;
 
-    return concreteFunc;
-}
+    return concreteFunc; 
+    return nullptr;
+}*/
 

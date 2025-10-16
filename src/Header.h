@@ -54,3 +54,6 @@
 #include "BackLLVM.h"
 #include "NamedConst.h"
 #include "BitCast.h"
+#include "TemplateDecl.h"
+#include "TemplateParamNode.h"
+#include "TemplateFunctionCall.h"

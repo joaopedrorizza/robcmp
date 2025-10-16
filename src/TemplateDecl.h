@@ -1,33 +1,28 @@
-// TemplateDecl.h (CORRIGIDO)
+
 #pragma once
 
 #include "Node.h"
 #include "FunctionDecl.h"
-#include "TemplateParamNode.h" // Inclui a definição correta do parâmetro
-#include <vector>
-#include <string>
-#include <algorithm> // Necessário para std::move, embora o loop seja melhor
 
-class FunctionImpl; // Forward declaration para o método instantiate
-
-class TemplateDecl : public Node {
+class TemplateDecl : public FunctionBase {
+protected:
+    vector<Node*> params;
+    string templ_dt;
 public:
-    std::vector<TemplateParamNode*> params;
-    FunctionImpl *fnImpl; // ✅ troque de FunctionDecl* para FunctionImpl*
+	TemplateDecl(string templ_dt, string name, FunctionParams *fp, vector<Node*> &&stmts,
+		vector<Node*> &&tpl, location_t loc, bool constructor = false) :
+		FunctionBase(BuildTypes::undefinedType, name, fp, std::move(stmts), loc, constructor) {
+        this->params = tpl;
+        this->templ_dt = templ_dt;
+	}
 
-    TemplateDecl(std::vector<Node*> *tpl_params, 
-                 FunctionImpl *fd, 
-                 location_t loc)
-        : Node(loc), fnImpl(fd) {
-        if (tpl_params) {
-            for (Node* param_node : *tpl_params)
-                params.push_back(static_cast<TemplateParamNode*>(param_node));
-            delete tpl_params;
-        }
+    Value *generate(FunctionImpl *, BasicBlock *, BasicBlock *allocblock) override {
+        return nullptr;
     }
 
-    FunctionImpl* instantiate(const std::string &instantiatedName, 
-                              const std::vector<std::string> &concreteTypes);
+    Node *generateFor(const vector<string> &concreteTypes);
+
+    string mangleName(string baseName, string returnType, vector<string> &params);
 
     Node* accept(Visitor &v) override;
 };

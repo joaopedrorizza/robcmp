@@ -217,6 +217,7 @@ public:
     virtual Node* visit(Return& n) override;
     virtual Node* visit(FunctionImpl& n) override;
     virtual Node* visit(FunctionCall& n) override;
+    virtual Node* visit(TemplateDecl& n) override;
 
     virtual Node* visit(BitCast& n) override;
 };

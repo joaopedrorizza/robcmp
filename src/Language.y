@@ -20,7 +20,7 @@
 %type <node> bind asminline
 %type <node> template_param
 %type <nodes> template_param_list
-%type <strings> type_impls type_arg_list
+%type <strings> type_impls
 
 %type <ae> element
 %type <aes> elements relements array
@@ -133,11 +133,10 @@ function_impl : TOK_IDENTIFIER[type] TOK_IDENTIFIER[id] '(' function_params ')' 
 }
 
 function_impl : TOK_TEMPLATE '<' template_param_list[tpl] '>' TOK_IDENTIFIER[type] TOK_IDENTIFIER[id] '(' function_params[fp] ')' function_attributes[fa] '{' stmts[s] '}'[ef] {
-    FunctionImpl *innerFunc = new FunctionImpl(buildTypes->getType($type, true), $id, $fp,
-        std::move(*$s), @id, @ef);
-    innerFunc->setAttributes($fa);
-    TemplateDecl *tplDecl = new TemplateDecl($tpl, innerFunc, @TOK_TEMPLATE); // ✅ sem cast
-    $$ = tplDecl;
+    TemplateDecl *templ = new TemplateDecl($type, $id, $fp,
+        std::move(*$s), std::move(*$tpl), @id);
+    templ->setAttributes($fa);
+    $$ = templ;
 }
 
 function_attributes: function_attributes[fas] ',' function_attribute[fa] {
@@ -197,9 +196,6 @@ template_param
         ); 
     }
 ;
-
-type_arg_list : TOK_IDENTIFIER { $$ = new vector<string>(); $$->push_back($1); }
-	| type_arg_list ',' TOK_IDENTIFIER { $1->push_back($3); $$ = $1; }
 
 event : TOK_QUANDO TOK_INTEGER TOK_ESTA TOK_INTEGER '{' stmts '}'[ef] {	
 				/*char funcname[100];
@@ -528,7 +524,7 @@ call_or_cast : ident_or_xident[id] '(' paramscall ')' {
 	$$->setLocation(@id);
 }
 
-call_or_cast : ident_or_xident[id] '<' type_arg_list[tpl] '>' '(' paramscall ')' {
+call_or_cast : ident_or_xident[id] '#' type_impls[tpl] '(' paramscall ')' {
 	$$ = new TemplateFunctionCall($id, std::move(*$tpl), $paramscall, @id);
 	$$->setLocation(@id);
 }
