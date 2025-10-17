@@ -1,4 +1,4 @@
-//TemplateFunctionCall.h
+
 #pragma once
 
 #include "Node.h"
@@ -6,7 +6,7 @@
 #include "Identifier.h"
 #include "Variable.h"
 
-class TemplateFunctionCall : public Node {
+class TemplateCall : public Node {
 private:
     Identifier ident;                       // nome da função (ex: swap)
     std::vector<std::string> templateParams; // lista dos tipos do template
@@ -14,7 +14,7 @@ private:
     Variable *leftValue = NULL;
 
 public:
-    TemplateFunctionCall(const std::string& name,
+    TemplateCall(const std::string& name,
                          std::vector<std::string> tparams,
                          ParamsCall *pc,
                          location_t loc)

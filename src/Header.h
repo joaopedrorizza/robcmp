@@ -55,5 +55,6 @@
 #include "NamedConst.h"
 #include "BitCast.h"
 #include "TemplateDecl.h"
+#include "TemplateImpl.h"
 #include "TemplateParamNode.h"
-#include "TemplateFunctionCall.h"
+#include "TemplateCall.h"

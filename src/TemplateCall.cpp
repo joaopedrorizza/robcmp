@@ -1,4 +1,4 @@
-#include "TemplateFunctionCall.h"
+#include "TemplateCall.h"
 #include "FunctionCall.h"
 #include "BuildTypes.h"
 #include "FunctionDecl.h"
@@ -17,7 +17,7 @@
 
 extern Program *program;
 
-Value *TemplateFunctionCall::generate(FunctionImpl *func,
+Value *TemplateCall::generate(FunctionImpl *func,
                                       BasicBlock *block,
                                       BasicBlock *allocblock) {
     /*
@@ -125,6 +125,6 @@ Value *TemplateFunctionCall::generate(FunctionImpl *func,
     return nullptr;
 }
 
-Node* TemplateFunctionCall::accept(Visitor& v) {
+Node* TemplateCall::accept(Visitor& v) {
     return v.visit(*this);
 }

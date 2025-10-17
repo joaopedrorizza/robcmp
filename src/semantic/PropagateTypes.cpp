@@ -289,7 +289,7 @@ Node* PropagateTypes::visit(FunctionImpl& n) {
     return NULL;
 }
 
-Node* PropagateTypes::visit(TemplateDecl& n) {
+Node* PropagateTypes::visit(TemplateImpl& n) {
     return NULL;
 }
 

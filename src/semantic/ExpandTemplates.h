@@ -3,8 +3,8 @@
 
 #include "Visitor.h"
 #include "Identifier.h"
-#include "TemplateDecl.h"
-#include "TemplateFunctionCall.h"
+#include "TemplateImpl.h"
+#include "TemplateCall.h"
 
 class ExpandTemplates: public Visitor {
 public:
@@ -20,7 +20,7 @@ public:
         return NULL;
     }
 
-    virtual Node* visit(TemplateFunctionCall& n) override {
+    virtual Node* visit(TemplateCall& n) override {
 
         /*
             Encontrar o template com o nome da função sendo chamada
@@ -28,7 +28,7 @@ public:
                 Chamada: swap#int8(12, 25);
                 Encontrar o template swap e verificar se ele foi implementado para o argumento int8
 
-            Trocar o nó TemplateFunctionCall por uma chamada normal para swap#int8 monomorfizada
+            Trocar o nó TemplateCall por uma chamada normal para swap#int8 monomorfizada
 
         */
 
@@ -37,7 +37,7 @@ public:
 	    if (!templ_symbol)
 		    return NULL;
 
-        TemplateDecl *templ = dynamic_cast<TemplateDecl*>(templ_symbol);
+        TemplateImpl *templ = dynamic_cast<TemplateImpl*>(templ_symbol);
         if (!templ) {
             yyerrorcpp(string_format("%s is not a template declaration.", n.getName().c_str()).c_str(), &n);
             return NULL;

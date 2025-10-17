@@ -125,6 +125,12 @@ function_decl : TOK_IDENTIFIER[type] TOK_IDENTIFIER[id] '(' function_params ')' 
 	$$ = func;
 }
 
+/*function_decl : TOK_TEMPLATE '<' template_param_list[tpl] '>' TOK_IDENTIFIER[type] TOK_IDENTIFIER[id] '(' function_params ')' function_attributes[fa] ';' {
+	TemplateDecl *templdecl = new TemplateDecl($type, $id, $function_params, std::move(*$tpl), @id);
+	templdecl->setAttributes($fa);
+	$$ = templdecl;
+}*/
+
 function_impl : TOK_IDENTIFIER[type] TOK_IDENTIFIER[id] '(' function_params ')' function_attributes[fa] '{' stmts '}'[ef] {
 	FunctionImpl *func = new FunctionImpl(buildTypes->getType($type, true), $id, $function_params,
 		std::move(*$stmts), @id, @ef); 
@@ -133,10 +139,10 @@ function_impl : TOK_IDENTIFIER[type] TOK_IDENTIFIER[id] '(' function_params ')' 
 }
 
 function_impl : TOK_TEMPLATE '<' template_param_list[tpl] '>' TOK_IDENTIFIER[type] TOK_IDENTIFIER[id] '(' function_params[fp] ')' function_attributes[fa] '{' stmts[s] '}'[ef] {
-    TemplateDecl *templ = new TemplateDecl($type, $id, $fp,
+    TemplateImpl *templimpl = new TemplateImpl($type, $id, $fp,
         std::move(*$s), std::move(*$tpl), @id);
-    templ->setAttributes($fa);
-    $$ = templ;
+    templimpl->setAttributes($fa);
+    $$ = templimpl;
 }
 
 function_attributes: function_attributes[fas] ',' function_attribute[fa] {
@@ -525,7 +531,7 @@ call_or_cast : ident_or_xident[id] '(' paramscall ')' {
 }
 
 call_or_cast : ident_or_xident[id] '#' type_impls[tpl] '(' paramscall ')' {
-	$$ = new TemplateFunctionCall($id, std::move(*$tpl), $paramscall, @id);
+	$$ = new TemplateCall($id, std::move(*$tpl), $paramscall, @id);
 	$$->setLocation(@id);
 }
 

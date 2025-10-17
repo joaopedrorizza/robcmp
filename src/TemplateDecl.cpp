@@ -1,112 +1,65 @@
-#include "TemplateDecl.h"
+/*#include "TemplateDecl.h"
 #include "Program.h"
-#include "FunctionImpl.h"
-#include "BuildTypes.h"
-#include "TemplateParamNode.h"
-#include "semantic/PropagateTypes.h"
-#include "semantic/Visitor.h"
-#include <memory>
+#include "FunctionDecl.h"
+#include "BackLLVM.h"
+#include "FunctionAttributes.h"
+#include "Array.h"
+#include "Matrix.h"
 
-extern std::unique_ptr<BuildTypes> buildTypes;
 
-Node* TemplateDecl::accept(Visitor &v) {
-    return v.visit(*this);
+Value *TemplateDecl::generate(FunctionImpl*, BasicBlock *, BasicBlock *allocblock) {
+	
+	if (func)
+		return func;
+
+	Node *symbol = findSymbol(name);
+	if (symbol != NULL && symbol != this) {
+		yyerrorcpp("Function/symbol " + name + " already defined.", this);
+		yyerrorcpp(name + " was first defined here.", symbol);
+		return NULL;
+	}
+
+	std::vector<Type*> arg_types;
+	if (!validateAndGetArgsTypes(arg_types))
+		return NULL;
+
+	Type *xtype = buildTypes->llvmType(dt);
+	if (returnIsPointer)
+		xtype = PointerType::getUnqual(xtype);
+	
+	FunctionType *ftype = FunctionType::get(xtype, ArrayRef<Type*>(arg_types), false);
+	Function *nfunc = Function::Create(ftype, linkage, codeAddrSpace, getFinalName(), mainmodule);
+	nfunc->setCallingConv(CallingConv::C);
+	addFunctionAttributes(nfunc);
+
+	if (buildTypes->isUnsignedDataType(dt))
+		nfunc->addRetAttr(Attribute::ZExt);
+	
+	unsigned Idx = 0;
+	for (auto &Arg : nfunc->args()) {
+		Variable *fp = parameters->getParameters()[Idx];
+		DataType ptype = fp->getDataType();
+
+		if (buildTypes->isUnsignedDataType(ptype))
+			Arg.addAttr(Attribute::ZExt);
+
+		const string& argname = fp->getName();
+		if (argname == "_this") {
+			thisArg = &Arg;
+		} else if (argname == "_parent") {
+			parentArg = &Arg;
+		}
+
+		Idx++;
+	}
+
+	func = nfunc;
+	return func;
 }
 
-string TemplateDecl::mangleName(string baseName, string returnType, vector<string> &params) {
-    //MONOMORFIZAÇÃO
-    // Monta o nome instanciado: Exemplo: swap<int8,int16>
-    // Este nome é necessário para o linker e para o cache.
-    std::string instantiatedName = baseName + "<";
-    for (size_t i = 0; i < params.size(); ++i) {
-        instantiatedName += params[i];
-        if (i + 1 < params.size())
-            instantiatedName += ",";
-    }
-    instantiatedName += ">";
-    return instantiatedName;
-}
-
-Node* TemplateDecl::generateFor(const vector<string> &concreteTypes) {
-    
-    if (params.size() != concreteTypes.size()) {
-        yyerrorcpp("Template instantiation failed: mismatched parameter count.", this);
-        return nullptr;
-    }
-
-    //TODO: Verificar se o template foi instanciado para os tipos concretos recebidos. Se sim, apenas retornar. Se não, deixa continuar abaixo.
-
-    std::map<std::string, DataType> substitutionMap;
-    for (size_t i = 0; i < params.size(); ++i) {
-        std::string paramName = params[i]->getName();
-        DataType dt = buildTypes->getType(concreteTypes[i]);
-        if (dt == BuildTypes::undefinedType) {
-            yyerrorcpp("Unknown type '" + concreteTypes[i] + "' in template instantiation.", this);
-            return nullptr;
-        }
-        substitutionMap[paramName] = dt;
-        //std::cerr << "Template param: " << paramName << " → " << buildTypes->name(dt) << std::endl;
-    }
-
-    // TODO: encontra o tipo de retorno da função, no substitutionMap, se for parâmetro
-    DataType rdt = buildTypes->getType(templ_dt);
-    if (rdt == BuildTypes::undefinedType) {
-        yyerrorcpp("Unknown type '" + templ_dt + "' in template instantiation.", this);
-        return nullptr;
-    }
-
-
-    //FunctionImpl *fi = new FunctionImpl(rdt, 
-    //DataType dt, string name, FunctionParams *fp, vector<Node*> &&stmts, location_t loc, 
-	//	location_t ef, bool constructor = false
-    //return fi;
-    // depois de implementar, você vai ver um .ll que apresenta a função concreta, mas a
-    // chamada vai ser removida (por hora)
-
-    return nullptr;
-}
-
-/*FunctionImpl* TemplateDecl::instantiate(const std::string &instantiatedName, 
-                                        const std::vector<std::string> &concreteTypes) {
-    ...
-
-    std::map<std::string, DataType> substitutionMap;
-    for (size_t i = 0; i < params.size(); ++i) {
-        std::string paramName = params[i]->getName();
-        DataType dt = buildTypes->getType(concreteTypes[i]);
-        if (dt == BuildTypes::undefinedType) {
-            yyerrorcpp("Unknown type '" + concreteTypes[i] + "' in template instantiation.", this);
-            return nullptr;
-        }
-        substitutionMap[paramName] = dt;
-        std::cerr << "Template param: " << paramName << " → " << buildTypes->name(dt) << std::endl;
-    }
-
-    FunctionImpl *originalImpl = fnImpl;
-    if (!originalImpl) {
-        yyerrorcpp("TemplateDecl does not contain a valid FunctionImpl.", this);
-        return nullptr;
-    }
-
-    FunctionImpl *concreteFunc = originalImpl->clone(instantiatedName);
-    if (!concreteFunc) {
-        yyerrorcpp("Failed to clone template function.", this);
-        return nullptr;
-    }
-
-    std::cerr << "Cloned function: " << concreteFunc->getName() << std::endl;
-
-    auto subMapPtr = std::make_unique<std::map<std::string, DataType>>(substitutionMap);
-    PropagateTypes substitutor(subMapPtr.get());
-
-    // Substitui tipos no corpo, parâmetros e retorno
-    //substitutor.propagateChildren(*concreteFunc);
-    substitutor.visit(*concreteFunc);
-
-
-    std::cerr << "Finished type substitution for: " << concreteFunc->getName() << std::endl;
-
-    return concreteFunc; 
-    return nullptr;
+Value* TemplateDecl::getLLVMValue(Node *, FunctionImpl *) {
+	if (!func)
+		generate(NULL, NULL, global_alloc);
+	return func;
 }*/
 
