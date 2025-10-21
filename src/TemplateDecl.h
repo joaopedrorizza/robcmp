@@ -6,22 +6,23 @@
 #include "FunctionAttributes.h"
 #include "FunctionDecl.h"
 
-class TemplateDecl: public FunctionBase {
-
-	protected:
-    vector<Node*> params;
+class TemplateDecl : public FunctionBase
+{
+protected:
+    vector<Node *> params;
     string templ_dt;
+
 public:
-	TemplateDecl(string templ_dt, string name, FunctionParams *fp, vector<Node*> &&tpl, 
-		location_t loc, bool constructor = false) :
-		FunctionBase(BuildTypes::undefinedType, name, fp, std::move(stmts), loc, constructor) {
+    TemplateDecl(DataType dt, string name, FunctionParams *fp, vector<Node *> &&tpl, location_t loc) : FunctionBase(BuildTypes::undefinedType, name, fp, loc)
+    {
         this->params = tpl;
         this->templ_dt = templ_dt;
-	}
-
-    Value *generate(FunctionImpl *, BasicBlock *, BasicBlock *allocblock) override {
-        return nullptr;
+        declaration = true;
     }
 
-    Node* accept(Visitor &v) override;
+    virtual Value *generate(FunctionImpl *func, BasicBlock *block, BasicBlock *allocblock) override;
+
+    virtual Value *getLLVMValue(Node *, FunctionImpl *) override;
+
+    Node *accept(Visitor &v) override;
 };*/

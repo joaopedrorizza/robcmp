@@ -16,9 +16,7 @@ public:
         this->templ_dt = templ_dt;
 	}
 
-    Value *generate(FunctionImpl *, BasicBlock *, BasicBlock *allocblock) override {
-        return nullptr;
-    }
+    Value *generate(FunctionImpl *, BasicBlock *, BasicBlock *allocblock) override;
 
     Node *generateFor(const vector<string> &concreteTypes);
 
@@ -26,3 +24,4 @@ public:
 
     Node* accept(Visitor &v) override;
 };
+

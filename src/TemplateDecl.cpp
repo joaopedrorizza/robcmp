@@ -14,7 +14,7 @@ Value *TemplateDecl::generate(FunctionImpl*, BasicBlock *, BasicBlock *allocbloc
 
 	Node *symbol = findSymbol(name);
 	if (symbol != NULL && symbol != this) {
-		yyerrorcpp("Function/symbol " + name + " already defined.", this);
+		yyerrorcpp("Template Function/symbol " + name + " already defined.", this);
 		yyerrorcpp(name + " was first defined here.", symbol);
 		return NULL;
 	}

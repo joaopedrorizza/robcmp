@@ -1,9 +1,9 @@
-#include "TemplateCall.h"
+/*#include "TemplateCall.h"
 #include "FunctionCall.h"
 #include "BuildTypes.h"
 #include "FunctionDecl.h"
 #include "FunctionImpl.h"
-#include "TemplateDecl.h"
+#include "TemplateImpl.h"
 #include "HeaderGlobals.h"
 #include "Load.h"
 #include "BackLLVM.h"
@@ -12,119 +12,136 @@
 #include "Interface.h"
 #include "semantic/PropagateTypes.h"
 #include "semantic/Visitor.h"
-
-// testando github
+#include "ParamsCall.h"
 
 extern Program *program;
+extern std::unique_ptr<BuildTypes> buildTypes;
 
 Value *TemplateCall::generate(FunctionImpl *func,
-                                      BasicBlock *block,
-                                      BasicBlock *allocblock) {
-    /*
+                              BasicBlock *block,
+                              BasicBlock *allocblock)
+{
     RobDbgInfo.emitLocation(this);
 
     std::string baseName = ident.getFullName();
-    
 
-    //MONOMORFIZAÇÃO
-    // Monta o nome instanciado: Exemplo: swap<int8,int16>
-    // Este nome é necessário para o linker e para o cache.
-    std::string instantiatedName = baseName + "<";
-    for (size_t i = 0; i < templateParams.size(); ++i) {
-        instantiatedName += templateParams[i];
-        if (i + 1 < templateParams.size())
-            instantiatedName += ",";
+    // 1) Encontrar o TemplateImpl correspondente no escopo atual
+    Identifier templ_ident(baseName, getLoc());
+    Node *templ_symbol = templ_ident.getSymbol(getScope());
+    if (!templ_symbol) {
+        yyerrorcpp("Template function " + baseName + " not defined.", this);
+        return nullptr;
     }
-    instantiatedName += ">";
 
-    std::cerr << "Instantiated: " << instantiatedName << std::endl;
+    TemplateImpl *templImpl = dynamic_cast<TemplateImpl *>(templ_symbol);
+    if (!templImpl) {
+        yyerrorcpp(string_format("%s is not a template declaration.", baseName.c_str()).c_str(), this);
+        return nullptr;
+    }
 
-    // ------------------------------------------------------------------
-    // PASSO 1: VERIFICAÇÃO DE CACHE E INSTANCIAÇÃO
-    // ------------------------------------------------------------------
-    
-    // Tenta buscar a função instanciada primeiro.
-    std::cerr << "Looking for instantiated function in cache: " << instantiatedName << std::endl;
+    // 2) Pedir ao TemplateImpl para gerar (ou retornar cache) a função instanciada
+    //    getTemplateParams() deve retornar vector<string> com os tipos concretos (ex: ["int8"])
+    const std::vector<std::string> concreteTypes = this->getTemplateParams();
 
-    FunctionImpl *concreteFunc = program->getInstantiatedTemplate(instantiatedName); 
+    Node *instNode = templImpl->generateFor(concreteTypes);
+    if (!instNode) {
+        yyerrorcpp("Error instantiating template " + baseName + ".", this);
+        return nullptr;
+    }
 
+    // Esperamos que a instância retornada seja um FunctionImpl
+    FunctionImpl *concreteFunc = dynamic_cast<FunctionImpl *>(instNode);
     if (!concreteFunc) {
-        // 1.1 Busca o TemplateDecl original
-        TemplateDecl *templDecl = nullptr;
-        for (Node *child : program->children()) {
-            templDecl = dynamic_cast<TemplateDecl*>(child);
-            if (templDecl) {
-                std::cerr << "Found TemplateDecl with fnImpl name: " << templDecl->fnImpl->getFinalName() << std::endl;
-            }
-            if (templDecl && templDecl->fnImpl->getFinalName() == baseName)
-                break;
-        }
+        yyerrorcpp("Template instantiation did not produce a function for " + baseName + ".", this);
+        return nullptr;
+    }
 
-        if (!templDecl) {
-            yyerrorcpp("Template function " + baseName + " not defined.", this);
-            return NULL;
-        }
-        
-        // 1.2 REALIZA A INSTANCIAÇÃO (CLONAGEM E SUBSTITUIÇÃO DE TIPOS)
-        // Isso é a parte que falta: O compilador deve clonar o corpo da função 
-        // e substituir todos os TemplateParam pelo tipo concreto da chamada (templateParams).
-        
-        // **ESTE É ONDE VOCÊ DEVE INSERIR A LÓGICA DE INSTANCIAÇÃO DO SEU COMPILADOR**
-        // Em um compilador de verdade, isso é feito por um método dedicado (e.g., TemplateInstantiator).
-        
-        // Exemplo simplificado (você precisa implementar o clone-e-substitui):
-        concreteFunc = templDecl->instantiate(instantiatedName, templateParams); 
-        std::cerr << "Instantiated function created: " << concreteFunc->getName() << std::endl;
-        std::cerr << "Adding instantiated function to program and cache." << std::endl;
-
-
-        
-        if (!concreteFunc) {
-            yyerrorcpp("Error instantiating template " + instantiatedName + ".", this);
-            return NULL;
-        }
-
-        // 1.3 Adiciona ao programa e ao cache
+    // 3) Se a instância não estiver registrada no programa, registrar
+    //    (algumas implementações de generateFor já fazem isso — aqui garantimos)
+    //    Usamos program->addChild / addSymbol como já utilizado no seu código.
+    bool insertedToProgram = false;
+    // tenta verificar se já existe - Program pode ter método find (se tiver, prefira); fallback:
+    // Procurar pelo nome na tabela de símbolos do escopo global (program)
+    // (Se program fornecer findFunction / getSymbol, usar diretamente — aqui uso addSymbol defensivo)
+    // Se já existe um símbolo com o nome da função, presumimos que já esteja registrada.
+    Identifier checkId(concreteFunc->getName(), getLoc());
+    Node *existing = checkId.getSymbol(program);
+    if (!existing) {
         program->addChild(concreteFunc);
-        program->cacheInstantiatedTemplate(instantiatedName, concreteFunc); 
         program->addSymbol(concreteFunc);
-        std::cerr << "Function inserted via addSymbol: " << concreteFunc->getName() << std::endl;
-
-        // ✅ Geração do corpo da função instanciada
-        BasicBlock *tempAlloc = BasicBlock::Create(global_context, "", concreteFunc->getLLVMFunction());
-        BasicBlock *tempBody = BasicBlock::Create(global_context, "body", concreteFunc->getLLVMFunction());
-        concreteFunc->generate(concreteFunc, tempBody, tempAlloc);
+        insertedToProgram = true;
+        std::cerr << "TemplateCall: registered instantiated function: " << concreteFunc->getName() << std::endl;
     }
 
-    // ------------------------------------------------------------------
-    // PASSO 2: DELEGAÇÃO PARA FUNCTIONCALL CONCRETO
-    // ------------------------------------------------------------------
-    
-    // A chamada de função real DEVE usar o nome instanciado.
+    // 4) Criar ParamsCall com os argumentos originais desta TemplateCall
+    //    (note: TemplateCall::node_children contém os argumentos)
     ParamsCall *pc = new ParamsCall();
-    for (Node *n : node_children) {
-        pc->append(n); 
+    for (Node *arg : this->node_children) {
+        // Não clonamos; assumimos que FunctionCall::generate irá usar os nós como estão
+        pc->append(arg);
     }
 
-    // Cria um FunctionCall concreto com o nome instanciado
-    std::cerr << "Creating FunctionCall for: " << instantiatedName << std::endl;
+    // 5) Criar um FunctionCall que aponte para a função monomorfizada
+    std::string instantiatedName = concreteFunc->getName();
+    std::cerr << "TemplateCall: creating FunctionCall for instantiated function: " << instantiatedName << std::endl;
     FunctionCall *concreteCall = new FunctionCall(instantiatedName, pc, getLoc());
 
-    // ... (Herança de escopo e leftValue, já OK) ...
-    concreteCall->setScope(getScope());
+    // Preservar escopo e leftValue (se aplicável)
+    //concreteCall->setScope(getScope());
     if (leftValue)
         concreteCall->setLeftValue(leftValue);
 
-    // Agora delega geração para FunctionCall normal (correto)
+    // 6) Delegar geração (a FunctionCall fará a geração de código usando o FunctionImpl concreto)
     Value *val = concreteCall->generate(func, block, allocblock);
 
-    // ... (Propaga tipo de retorno, já OK) ...
+    // 7) Propagar tipo de retorno (opcional) - caso queira propagar aqui
+    //    se concreteFunc tiver tipo definido, podemos ajustar este TemplateCall/type info
+    //    (o fluxo normal de PropagateTypes geralmente cuidará disso)
+    // PropagateTypes propag;
+    // propag.propagateChildren(*concreteCall);
 
     return val;
-    */
+}
+
+Node *TemplateCall::accept(Visitor &v)
+{
+    return v.visit(*this);
+}*/
+
+#include "TemplateCall.h"
+#include "FunctionCall.h"
+#include "BuildTypes.h"
+#include "FunctionDecl.h"
+#include "FunctionImpl.h"
+#include "TemplateImpl.h"
+#include "HeaderGlobals.h"
+#include "Load.h"
+#include "BackLLVM.h"
+#include "UserType.h"
+#include "Program.h"
+#include "Interface.h"
+#include "semantic/PropagateTypes.h"
+#include "semantic/Visitor.h"
+#include "ParamsCall.h"
+
+extern Program *program;
+extern std::unique_ptr<BuildTypes> buildTypes;
+
+// O corpo da função é removido e substituído por uma validação.
+// A lógica de expansão agora está inteiramente no ExpandTemplates::visit(TemplateCall &n).
+Value *TemplateCall::generate(FunctionImpl *func,
+                              BasicBlock *block,
+                              BasicBlock *allocblock)
+{
+    // Este código garante que o nó TemplateCall foi substituído por FunctionCall
+    // na fase de Template Expansion Pass, evitando a repetição da lógica e garantindo
+    // que a AST correta seja gerada.
+    yyerrorcpp("TemplateCall node should have been expanded to FunctionCall before code generation.", this);
+
     return nullptr;
 }
 
-Node* TemplateCall::accept(Visitor& v) {
+Node *TemplateCall::accept(Visitor &v)
+{
     return v.visit(*this);
 }
