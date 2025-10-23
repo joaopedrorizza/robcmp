@@ -1,62 +1,37 @@
-
 #pragma once
 
 #include "Node.h"
-#include "ParamsCall.h"
 #include "Identifier.h"
+#include "ParamsCall.h"
 #include "Variable.h"
 
-class TemplateCall : public Node {
+class TemplateCall : public Node
+{
 private:
-    Identifier ident;                       // nome da função (ex: swap)
-    std::vector<std::string> templateParams; // lista dos tipos do template
-    Node *symbol = NULL; 
-    Variable *leftValue = NULL;
+    Identifier ident_;                      // nome base da função template (ex: "swap")
+    std::vector<std::string> templateArgs_; // ex: ["int8", ...]
+    ParamsCall *args_;                      // <-- MANTER os argumentos reais aqui!
+    Variable *leftValue_ = nullptr;
+    DataType dt_ = BuildTypes::undefinedType;
 
 public:
-    TemplateCall(const std::string& name,
-                         std::vector<std::string> tparams,
-                         ParamsCall *pc,
-                         location_t loc)
-        : Node(loc), ident(name, loc), templateParams(std::move(tparams)) {
-        if (pc) {
-            node_children.reserve(pc->getNumParams());
-            node_children.insert(end(node_children),
-                pc->getParameters().begin(), pc->getParameters().end());
-            delete pc;
-        }
+    TemplateCall(const Identifier &id,
+                 std::vector<std::string> &&tplArgs,
+                 ParamsCall *args, // <-- receba do .y
+                 location_t loc)
+        : Node(loc), ident_(id), templateArgs_(std::move(tplArgs)), args_(args)
+    {
     }
 
-    // acesso aos parâmetros de template
-    const std::vector<std::string>& getTemplateParams() const {
-        return templateParams;
-    }
+    const Identifier &getIdent() const { return ident_; }
+    const std::vector<std::string> &getTemplateArgs() const { return templateArgs_; }
+    ParamsCall *getArgs() const { return args_; } // <-- acessor
 
-    Identifier& getIdent() {
-        return ident;
-    }
+    void setLeftValue(Variable *lv) { leftValue_ = lv; }
+    Variable *getLeftValue() const { return leftValue_; }
 
-    const std::string getName() const override {
-        return ident.getFullName();
-    }
-
-    std::vector<Node *>& getParameters() {
-        return node_children;
-    }
-
-    virtual void setLeftValue(Variable *symbol) override {
-        leftValue = symbol;
-    }
-
-    // ainda não resolver tipos aqui
-    virtual DataType getDataType() override {
-        return dt;
-    }
-
-    // geração vai instanciar a função concreta
-    virtual Value *generate(FunctionImpl *func,
-                            BasicBlock *block,
-                            BasicBlock *allocblock) override;
-
-    Node* accept(Visitor& v) override;
+    Node *instantiateAndLower(); // <-- lowering
+    Value *generate(FunctionImpl *, BasicBlock *, BasicBlock *) override;
+    DataType getDataType() override { return dt_; }
+    Node *accept(Visitor &v) override;
 };

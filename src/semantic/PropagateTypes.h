@@ -11,6 +11,7 @@
 #include "Return.h"
 #include "FunctionImpl.h"
 #include "FunctionCall.h"
+#include "TemplateCall.h"
 #include "Enum.h"
 #include "Load.h"
 #include "MemCopy.h"
@@ -218,6 +219,7 @@ public:
     virtual Node* visit(FunctionImpl& n) override;
     virtual Node* visit(FunctionCall& n) override;
     virtual Node* visit(TemplateImpl& n) override;
+    virtual Node* visit(TemplateCall& n) override;
 
     virtual Node* visit(BitCast& n) override;
 };

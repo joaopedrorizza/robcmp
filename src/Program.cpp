@@ -228,8 +228,8 @@ void Program::doSemanticAnalysis() {
 	SymbolizeTree st;
 	st.visit(*this);
 
-	ExpandTemplates et;
-	et.visit(*this);
+	/*ExpandTemplates et;
+	et.visit(*this);*/
 
 	IdentifyVirtualDispatch ivd;
 	ivd.visit(*this);

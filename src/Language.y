@@ -531,7 +531,8 @@ call_or_cast : ident_or_xident[id] '(' paramscall ')' {
 }
 
 call_or_cast : ident_or_xident[id] '#' type_impls[tpl] '(' paramscall ')' {
-	$$ = new TemplateCall($id, std::move(*$tpl), $paramscall, @id);
+	Identifier ident($id, @id); // constrói o Identifier com nome e localização
+	$$ = new TemplateCall(ident, std::move(*$tpl), $paramscall, @id);
 	$$->setLocation(@id);
 }
 

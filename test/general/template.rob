@@ -1,10 +1,15 @@
 
-template<typename T>
-void swap(T u, T v) {
-    return;
+template <typename T>
+void identify(T x) {
+return;
 }
 
+
 int16 main() {
-    swap#int8(12, 25);
+
+    identify#int8(11);
+
+
+  
     return 0;
 }

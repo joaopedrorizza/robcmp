@@ -14,104 +14,56 @@
 #include <map>
 #include <iostream>
 
-extern std::unique_ptr<BuildTypes> buildTypes;
-
-class ExpandTemplates : public Visitor
+// ... includes iguais
+class ExpandTemplates : public PropagateTypes
 {
-private:
+    // mapeamento T -> tipo concreto (já existente no seu código)
     std::map<std::string, DataType> *subMap = nullptr;
 
-    void propagateChildren(Node &n)
-    {
-        for (auto it = n.node_children.begin(); it != n.node_children.end(); ++it)
-        {
-            Node *replace = (*it)->accept(*this);
-            if (replace)
-            {
-                *it = replace;
-            }
-        }
-    }
-
 public:
-    ExpandTemplates() {}
+    ExpandTemplates() = default;
+    explicit ExpandTemplates(std::map<std::string, DataType> *m) : subMap(m) {}
 
-    void setSubstitutionMap(std::map<std::string, DataType> *map)
+    // *** NÃO mais visit(TemplateCall) aqui ***
+
+    Node *visit(Return &r) override
     {
-        subMap = map;
-    }
+        Node *newExpr = nullptr;
 
-    virtual Node *visit(Node &n) override
-    {
-        propagateChildren(n);
-        return nullptr;
-    }
-
-    Node *visit(TemplateCall &n) override
-    {
-        propagateChildren(n);
-
-        std::string baseName = n.getIdent().getFullName();
-        Identifier templ_ident(baseName, n.getLoc());
-        Node *templ_symbol = templ_ident.getSymbol(n.getScope());
-        if (!templ_symbol)
+        // Se o Return tiver expressão (dependendo de como você a armazena; abaixo assumo children()[0])
+        if (!r.children().empty() && r.children()[0])
         {
-            yyerrorcpp("Template function not defined: " + baseName, &n);
-            return nullptr;
+            Node *exp = r.children()[0]->accept(*this);
+            newExpr = exp ? exp : r.children()[0];
         }
 
-        TemplateImpl *templ = dynamic_cast<TemplateImpl *>(templ_symbol);
-        if (!templ)
+        if (newExpr)
         {
-            yyerrorcpp(string_format("%s is not a template declaration.", baseName.c_str()), &n);
-            return nullptr;
+            // Usa o construtor Return(Node*) — sem clonagem
+            return new Return(newExpr);
         }
-
-        Node *targetFunc = templ->generateFor(n.getTemplateParams());
-
-        if (!targetFunc)
+        else
         {
-            yyerrorcpp("Template generation failed for types: " + join(n.getTemplateParams(), ", "), &n);
-            return nullptr;
+            // Return sem expressão: constrói só com a localização original
+            return new Return(r.getLoc());
         }
-
-        std::string mangled = dynamic_cast<FunctionImpl *>(targetFunc)->getName();
-
-        ParamsCall *args = new ParamsCall();
-        for (Node *child : n.children())
-            args->append(child);
-
-        FunctionCall *concreteCall = new FunctionCall(mangled, args, n.getLoc());
-        concreteCall->setScope(n.getScope());
-
-        return concreteCall;
     }
 
-    /*Node *visit(Return &r) override
-    {
-        propagateChildren(r);
-
-        Return *newReturn = new Return(r.getLoc());
-        for (Node *child : r.children())
-        {
-            newReturn->addChild(child);
-        }
-
-        return newReturn;
-    }
-
+    // Ex.: se precisar tocar em Variable para trocar tipos T->concreto:
     Node *visit(Variable &v) override
     {
-        std::string typeName = buildTypes->name(v.getDataType());
-        if (subMap && subMap->count(typeName))
-        {
-            DataType concreteType = (*subMap)[typeName];
-            Variable *newVar = new Variable(v.getIdent().getFullName(),
-                                            concreteType,
-                                            v.getLoc());
-            return newVar;
-        }
+        if (!subMap)
+            return nullptr;
+        // nome do tipo atual
+        std::string tyName = buildTypes->name(v.getDataType());
+        auto it = subMap->find(tyName);
+        if (it == subMap->end())
+            return nullptr; // sem substituição → mantém original
 
-        return nullptr;
-    }*/
+        DataType concrete = it->second;
+        auto *nv = new Variable(v.getIdent().getFullName(), concrete, v.getLoc());
+        return nv;
+    }
+
+    // mantenha os demais visits necessários (Assignment, Decl, etc.), sempre criando nós novos
 };

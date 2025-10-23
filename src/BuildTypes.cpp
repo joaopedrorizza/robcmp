@@ -13,6 +13,7 @@
 #include "BackLLVM.h"
 #include "Int8.h"
 
+
 BuildTypes::BuildTypes(DataType targetPointerType, Program *program) :
     targetPointerType(targetPointerType) {
 

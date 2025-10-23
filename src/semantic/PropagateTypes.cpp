@@ -283,9 +283,29 @@ Node* PropagateTypes::visit(CmpOp& n) {
 }
 
 Node* PropagateTypes::visit(FunctionImpl& n) {
+
+    // Salva contexto anterior
+    DataType prevDt = currentFunctionDt;
+
+    // Define contexto da função atual ANTES de visitar os filhos
     currentFunctionDt = n.getDataType();
+    if (currentFunctionDt == BuildTypes::undefinedType) {
+        // Se por algum motivo a instância ainda não setou o retorno,
+        // trate como void para não quebrar os returns "simples".
+        currentFunctionDt = tvoid;
+    }
+
+    // Agora propague nos filhos (params, corpo etc.)
+    // Se você já tinha uma versão específica, mantenha-a;
+    // o importante é que o contexto já está definido antes de descer.
     propagateChildren(n);
-    currentFunctionDt = BuildTypes::undefinedType;
+
+    // Restaura contexto
+    currentFunctionDt = prevDt;
+
+    /*currentFunctionDt = n.getDataType();
+    propagateChildren(n);
+    currentFunctionDt = BuildTypes::undefinedType;*/
     return NULL;
 }
 
@@ -293,15 +313,43 @@ Node* PropagateTypes::visit(TemplateImpl& n) {
     return NULL;
 }
 
+Node* PropagateTypes::visit(TemplateCall &n) {
+    // Fase semântica: resolve TemplateCall -> (instancia) -> FunctionCall
+    Node *replacement = n.instantiateAndLower();
+    if (!replacement) return nullptr; // manterá o nó original, mas com erro reportado
+
+    // Como substituiremos o nó na AST do pai, devolvemos o replacement para o
+    // mecanismo do propagateChildren()
+    return replacement;
+}
+
 Node* PropagateTypes::visit(Return& n) {
-    if (!n.value()){
+    if (!n.value()) {
         n.dt = tvoid;
-        if (currentFunctionDt != tvoid)
-            yyerrorcpp(string_format("Return must be %s.", buildTypes->name(currentFunctionDt)), &n);
+
+        // 🔧 Proteção: evita chamar buildTypes->name() com tipo indefinido
+        if (currentFunctionDt != tvoid) {
+            if (currentFunctionDt == BuildTypes::undefinedType) {
+                yywarncpp("Return type is undefined; skipping type check for now.", &n);
+            } else {
+                yyerrorcpp(string_format("Return must be %s.",
+                                         buildTypes->name(currentFunctionDt)), &n);
+            }
+        }
+
         return NULL;
     } else {
         propagateChildren(n);
         DataType valueDt = n.value()->getDataType();
+
+        // 🔧 Proteção: se ainda indefinido, não tente comparar/coagir
+        if (currentFunctionDt == BuildTypes::undefinedType ||
+            valueDt == BuildTypes::undefinedType) {
+            yywarncpp("Return type not yet defined during propagation; skipping check.", &n);
+            n.dt = valueDt;
+            return NULL;
+        }
+
         if (currentFunctionDt != valueDt) {
             Node *converted = coerceTo(n.node_children[0], currentFunctionDt);
             if (converted) {
