@@ -13,12 +13,17 @@ protected:
 	int gepIndex = -1;
 	enum PointerMode pointer = pm_unknown;
 	bool pseudoVar = false;
+	string dts;
 
 public:
     Variable(const string &name, location_t loc): NamedNode(name, loc), ident(name, loc) {}
 	
 	Variable(const string &name, DataType dt, location_t loc): NamedNode(name, loc), ident(name, loc) {
 		this->dt = dt;
+	}
+
+	Variable(const string &name, string dts, location_t loc): NamedNode(name, loc), ident(name, loc) {
+		this->dts = dts;
 	}
 
     virtual Value* getLLVMValue(Node *stem, FunctionImpl *gfunc = NULL) override;
@@ -59,5 +64,16 @@ public:
 
 	bool isPseudoVar() {
 		return pseudoVar;
+	}
+
+	virtual DataType getDataType() override {
+		if (dt == BuildTypes::undefinedType) {
+			dt = buildTypes->getType(dts, true);
+		}
+		return dt;
+	}
+
+	string getDataTypeName() {
+		return dts;
 	}
 };

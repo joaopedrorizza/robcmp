@@ -176,7 +176,6 @@ Node *TemplateImpl::generateFor(const vector<string> &concreteTypes)
     else
     {
         auto resp = substitutionMap.find(templ_dt);
-
         if (resp == substitutionMap.end())
         {
             returnType = buildTypes->getType(templ_dt);
@@ -195,54 +194,12 @@ Node *TemplateImpl::generateFor(const vector<string> &concreteTypes)
     if (Node *exists = program->findSymbol(instantiatedName))
         return exists; // já instanciado → reuse
 
-    // Acessamos os parâmetros originais através de getParameters() da FunctionBase.
-    const std::vector<Variable *> &originalParameters = this->getParameters().getParameters();
-
-    // Step 6: Construção dos parâmetros concretos com substituição real
-    FunctionParams *newFp = new FunctionParams();
-
-    for (Variable *origVar : originalParameters)
-    {
-        DataType origTy = origVar->getDataType();
-        DataType concreteParamType = origTy;
-
-        // Busca textual aproximada do nome do tipo original (T, U, etc.)
-        std::string origTypeName = buildTypes->name(origTy);
-
-        // Verifica se é um tipo genérico e tenta resolver via substitutionMap
-        if (buildTypes->isTemplateType(origTy) || substitutionMap.count(origTypeName))
-        {
-            auto it = substitutionMap.find(origTypeName);
-            if (it != substitutionMap.end())
-            {
-                concreteParamType = it->second;
-                std::cout << "[DEBUG] Substituindo tipo de param "
-                          << origVar->getIdent().getFullName()
-                          << ": " << origTypeName
-                          << " → " << buildTypes->name(concreteParamType)
-                          << " (tid=" << concreteParamType << ")\n";
-            }
-            else if (substitutionMap.size() == 1)
-            {
-                // fallback seguro pra templates com um único parâmetro
-                concreteParamType = substitutionMap.begin()->second;
-                std::cout << "[DEBUG] Fallback: substituindo tipo genérico "
-                          << origTypeName << " → "
-                          << buildTypes->name(concreteParamType)
-                          << " (tid=" << concreteParamType << ")\n";
-            }
-            else
-            {
-                yywarncpp("Não foi possível resolver tipo genérico '" + origTypeName + "'.", this);
-            }
+    // Step 6: Substituição dos parametros de template nos argumentos da função
+    for (Variable *origVar : parameters->getParameters()) {
+        auto resp = substitutionMap.find(origVar->getDataTypeName());
+        if (resp != substitutionMap.end()) {
+            origVar->setDataType(resp->second);
         }
-
-        // Cria a variável concreta
-        Variable *newVar = new Variable(origVar->getIdent().getFullName(),
-                                        concreteParamType,
-                                        origVar->getLoc());
-
-        newFp->append(newVar);
     }
 
     // 7) Construir vector<Node*> vazio para o corpo; popularemos usando ExpandTemplates
@@ -252,18 +209,8 @@ Node *TemplateImpl::generateFor(const vector<string> &concreteTypes)
     location_t loc = this->sloc;
     location_t ef = this->sloc;
 
-    FunctionImpl *newFunc = new FunctionImpl(returnType, instantiatedName, newFp, std::move(newBody), loc, ef, this->constructor);
-    if (returnType != BuildTypes::undefinedType)
-        newFunc->setDataType(returnType);
-    else
-        newFunc->setDataType(tvoid);
-
-    for (Variable *parames : newFp->getParameters())
-    {
-        newFunc->addSymbol(parames->getIdent().getFullName(), parames);
-        std::cerr << "[DEBUG][instantiate] Registrado param '" << parames->getIdent().getFullName()
-                  << "' no escopo da função '" << newFunc->getName() << "'\n";
-    }
+    FunctionImpl *newFunc = new FunctionImpl(returnType, instantiatedName, parameters, std::move(newBody), loc, ef, this->constructor);
+    newFunc->setScope(program);
 
     // ==============================================================
     // 🧩 DEBUG: LOG COMPLETO - ANTES DA EXPANSÃO

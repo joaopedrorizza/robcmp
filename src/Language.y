@@ -233,7 +233,7 @@ function_params: %empty {
 }
 
 function_param : TOK_IDENTIFIER[type] TOK_IDENTIFIER[id] {
-	$$ = new Variable($id, buildTypes->getType($type, true), @type);
+	$$ = new Variable($id, $type, @type);
 }
 
 function_param : TOK_IDENTIFIER[type] '[' ']' TOK_IDENTIFIER[id] {
