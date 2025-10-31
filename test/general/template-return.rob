@@ -1,0 +1,14 @@
+
+template <typename T>
+T swap(T x) {
+return 10;
+}
+
+
+int16 main() {
+
+    if swap#int8(11) == 10 {
+        return 0;
+    }
+    return 1;
+}

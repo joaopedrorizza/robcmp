@@ -24,7 +24,6 @@ static TemplateImpl *lookupTemplateImpl(Node *scope, const std::string &baseName
     {
         if (auto *ti = dynamic_cast<TemplateImpl *>(sym))
             return ti;
-        // se for FunctionDecl sem getImpl(), não há muito o que fazer aqui
     }
 
     // 2) fallback global no Program
@@ -44,7 +43,7 @@ Node *TemplateCall::instantiateAndLower()
 {
     const std::string baseName = ident_.getFullName();
 
-    // 1) lookup do TemplateImpl (igual você já fez)
+    // 1) lookup do TemplateImpl 
     TemplateImpl *templImpl = lookupTemplateImpl(getScope(), baseName, getLoc());
     if (!templImpl)
     {
@@ -64,8 +63,6 @@ Node *TemplateCall::instantiateAndLower()
         yyerrorcpp("Template instantiation did not produce a FunctionImpl for '" + baseName + "'.", this);
         return nullptr;
     }
-
-    // 3) (opcional) registrar global se necessário…
 
     // 4) baixar para chamada concreta, **preservando os MESMOS argumentos**
     auto *call = new FunctionCall(concreteFunc->getName(), args_, getLoc()); // <-- AQUI

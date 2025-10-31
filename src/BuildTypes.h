@@ -124,7 +124,7 @@ public:
 
     const char *name(DataType tid)
     {
-        assert(tid != -1 && "Undefined type");
+        //assert(tid != -1 && "Undefined type");
         return tinfo[tid].name.c_str();
     }
 

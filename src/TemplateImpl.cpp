@@ -167,29 +167,25 @@ Node *TemplateImpl::generateFor(const vector<string> &concreteTypes)
     DataType returnType;
 
     if (templ_dt.empty())
+
     {
+        //TODO: verificar se é possível entrar aqui
+        //se o templt_dt chegar vazio, então não é função template, e esta classe não será usada
         returnType = buildTypes->getType("void");
     }
     else
     {
-        returnType = buildTypes->getType(templ_dt);
-        if (returnType == BuildTypes::undefinedType)
+        auto resp = substitutionMap.find(templ_dt);
+
+        if (resp == substitutionMap.end())
         {
-            auto it = substitutionMap.find(templ_dt);
-            if (it != substitutionMap.end())
-            {
-                returnType = it->second;
-            }
-            else if (templ_dt == "void")
-            {
-                returnType = buildTypes->getType("void");
-            }
-            else
-            {
-                yyerrorcpp("Unknown return type '" + templ_dt + "' in template instantiation.", this);
-                return nullptr;
-            }
+            returnType = buildTypes->getType(templ_dt);
         }
+        else
+        {
+            returnType = resp->second;
+        }
+
     }
 
     // 4) gerar nome mangleado (string que identifica a instância)
@@ -199,16 +195,9 @@ Node *TemplateImpl::generateFor(const vector<string> &concreteTypes)
     if (Node *exists = program->findSymbol(instantiatedName))
         return exists; // já instanciado → reuse
 
-    // 5) Se já existe instância (cache) -> retornar (OBS: TemplateCall já verifica em program,
-    //    mas é seguro verificar localmente também; aqui não fazemos lookup global para evitar
-    //    dependência de API específica — quem chamou já verifica normalmente.)
-    //    Se você preferir, mantenha um mapa local instantiations[mangled] = fn
-    //    IMPLEMENTAÇÃO OPCIONAL:
-    // if (instantiations.count(instantiatedName)) return instantiations[instantiatedName];
-
     // Acessamos os parâmetros originais através de getParameters() da FunctionBase.
     const std::vector<Variable *> &originalParameters = this->getParameters().getParameters();
-    
+
     // Step 6: Construção dos parâmetros concretos com substituição real
     FunctionParams *newFp = new FunctionParams();
 
@@ -257,9 +246,9 @@ Node *TemplateImpl::generateFor(const vector<string> &concreteTypes)
     }
 
     // 7) Construir vector<Node*> vazio para o corpo; popularemos usando ExpandTemplates
-    vector<Node *> newBody;
+    vector<Node *> newBody = this->node_children;
 
-       // 8) Construir a nova FunctionImpl (obs.: verifique assinatura do seu constructor)
+    // 8) Construir a nova FunctionImpl (obs.: verifique assinatura do seu constructor)
     location_t loc = this->sloc;
     location_t ef = this->sloc;
 
@@ -268,6 +257,13 @@ Node *TemplateImpl::generateFor(const vector<string> &concreteTypes)
         newFunc->setDataType(returnType);
     else
         newFunc->setDataType(tvoid);
+
+    for (Variable *parames : newFp->getParameters())
+    {
+        newFunc->addSymbol(parames->getIdent().getFullName(), parames);
+        std::cerr << "[DEBUG][instantiate] Registrado param '" << parames->getIdent().getFullName()
+                  << "' no escopo da função '" << newFunc->getName() << "'\n";
+    }
 
     // ==============================================================
     // 🧩 DEBUG: LOG COMPLETO - ANTES DA EXPANSÃO
@@ -310,12 +306,11 @@ Node *TemplateImpl::generateFor(const vector<string> &concreteTypes)
                       << " (tid=" << origChild->getDataType() << ")\n";
     std::cout << "=========================================================\n\n";
 
-
     // ==============================================================
     // ⚙️ EXPANSÃO DO CORPO
     // ==============================================================
 
-    ExpandTemplates expander(&substitutionMap);
+    /*ExpandTemplates expander(&substitutionMap);
     for (Node *origChild : this->node_children)
     {
         Node *expanded = nullptr;
@@ -331,6 +326,8 @@ Node *TemplateImpl::generateFor(const vector<string> &concreteTypes)
         if (expanded)
         {
             expanded->setScope(newFunc);
+            std::cerr << "[DEBUG][instantiate] Filho expandido: " << expanded->node_kind
+                      << " scope=" << (expanded->getScope() ? "OK" : "NULL") << "\n";
             newFunc->addChild(expanded);
         }
         else
@@ -353,7 +350,7 @@ Node *TemplateImpl::generateFor(const vector<string> &concreteTypes)
                 newFunc->addChild(nr);
             }
         }
-    }
+    }*/
 
     // ==============================================================
     // 🧠 DEBUG: LOG COMPLETO - DEPOIS DA EXPANSÃO
@@ -382,7 +379,6 @@ Node *TemplateImpl::generateFor(const vector<string> &concreteTypes)
 
     std::cout << "=========================================================\n\n";
 
-
     // ==============================================================
     // 🔚 Registro da nova função
     // ==============================================================
@@ -393,7 +389,6 @@ Node *TemplateImpl::generateFor(const vector<string> &concreteTypes)
     std::cout << "[TemplateImpl] Função instanciada registrada: " << instantiatedName << std::endl;
 
     return newFunc;
-
 }
 
 Value *TemplateImpl::generate(FunctionImpl *func, BasicBlock *block, BasicBlock *allocblock)

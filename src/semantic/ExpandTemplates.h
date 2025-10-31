@@ -55,7 +55,8 @@ public:
         if (!subMap)
             return nullptr;
         // nome do tipo atual
-        std::string tyName = buildTypes->name(v.getDataType());
+        std::string tyName;
+        yyerrorcpp("Expanding variable of type: " + tyName = buildTypes->name(v.getDataType()), &v);
         auto it = subMap->find(tyName);
         if (it == subMap->end())
             return nullptr; // sem substituição → mantém original
@@ -66,4 +67,45 @@ public:
     }
 
     // mantenha os demais visits necessários (Assignment, Decl, etc.), sempre criando nós novos
+
+    Node *visit(TemplateCall &n) override
+    {
+        // 1) localizar TemplateImpl base
+        std::string baseName = n.getIdent().getFullName();
+        Node *sym = n.getScope()->findSymbol(baseName);
+        auto *tpl = dynamic_cast<TemplateImpl *>(sym);
+        if (!tpl)
+        {
+            yyerrorcpp("Template not found: " + baseName, &n);
+            return nullptr;
+        }
+
+        // 2) instanciar com os args de template
+        const auto &targs = n.getTemplateArgs(); // ex.: ["int8"]
+        std::vector<std::string> concreteTypes(targs.begin(), targs.end());
+
+        Node *inst = tpl->generateFor(concreteTypes);
+        auto *concreteFunc = dynamic_cast<FunctionImpl *>(inst);
+
+        if (!concreteFunc)
+        {
+            yyerrorcpp("Template instantiation failed for: " + baseName, &n);
+            return nullptr;
+        }
+
+        // 3) visite argumentos reais e construa FunctionCall
+        ParamsCall *pc = n.getArgs();
+        ParamsCall *newPc = new ParamsCall();
+        if (pc)
+        {
+            for (auto *arg : pc->getParameters())
+            {
+                Node *a2 = arg ? arg->accept(*this) : nullptr;
+                if (a2)
+                    newPc->append(a2);
+            }
+        }
+        auto *call = new FunctionCall(concreteFunc->getName(), newPc, n.getLoc());
+        return call;
+    }
 };

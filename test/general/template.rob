@@ -1,15 +1,12 @@
 
 template <typename T>
-void identify(T x) {
+void swap(T x) {
 return;
 }
 
 
 int16 main() {
 
-    identify#int8(11);
-
-
-  
+    swap#int8(11);
     return 0;
 }
