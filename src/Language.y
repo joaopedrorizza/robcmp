@@ -138,9 +138,9 @@ function_impl : TOK_IDENTIFIER[type] TOK_IDENTIFIER[id] '(' function_params ')' 
 	$$ = func;
 }
 
-function_impl : TOK_TEMPLATE '<' template_param_list[tpl] '>' TOK_IDENTIFIER[type] TOK_IDENTIFIER[id] '(' function_params[fp] ')' function_attributes[fa] '{' stmts[s] '}'[ef] {
-    TemplateImpl *templimpl = new TemplateImpl($type, $id, $fp,
-        std::move(*$s), std::move(*$tpl), @id);
+function_impl : TOK_TEMPLATE '<' template_param_list[tpl] '>' TOK_IDENTIFIER[type] TOK_IDENTIFIER[id] '(' function_params ')' function_attributes[fa] '{' stmts[s] '}'[ef] {
+    TemplateImpl *templimpl = new TemplateImpl($type, $id, $function_params,
+        std::move(*$s), std::move(*$tpl), @id, @ef);
     templimpl->setAttributes($fa);
     $$ = templimpl;
 }

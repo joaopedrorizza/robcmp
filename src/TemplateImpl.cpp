@@ -107,7 +107,7 @@ static std::string encodeTypeString(const std::string &typeName)
     return os.str();
 }
 
-string TemplateImpl::mangleName(string baseName, string returnType, vector<string> &params)
+string TemplateImpl::mangleName(string baseName, string returnType_, vector<string> &params)
 {
     // Itanium-style simplified (determinístico)
     std::ostringstream os;
@@ -120,9 +120,9 @@ string TemplateImpl::mangleName(string baseName, string returnType, vector<strin
     }
     os << "E";
     // opcional: anexar retorno (pode não ser necessário, mas evita colisões se sobrecarga por retorno existir)
-    if (!returnType.empty())
+    if (!returnType_.empty())
     {
-        os << "R" << encodeTypeString(returnType);
+        os << "R" << encodeTypeString(returnType_);
     }
     return os.str();
 }
@@ -163,33 +163,22 @@ Node *TemplateImpl::generateFor(const vector<string> &concreteTypes)
         substitutionMap[paramName] = dt;
     }
 
-    // 3) determinar tipo de retorno concreto (se o retorno for parâmetro, substitui)
-    DataType returnType;
+    // 3) determinar tipo de retorno concreto (se o retorno for T, substitui)
+    DataType returntype;
 
-    if (templ_dt.empty())
-
-    {
-        //TODO: verificar se é possível entrar aqui
-        //se o templt_dt chegar vazio, então não é função template, e esta classe não será usada
-        returnType = buildTypes->getType("void");
-    }
-    else
-    {
-        auto resp = substitutionMap.find(templ_dt);
+        auto resp = substitutionMap.find(returnType);
         if (resp == substitutionMap.end())
         {
-            returnType = buildTypes->getType(templ_dt);
+            returntype = buildTypes->getType(returnType);
         }
         else
         {
-            returnType = resp->second;
+            returntype = resp->second;
         }
-
-    }
 
     // 4) gerar nome mangleado (string que identifica a instância)
     vector<string> paramsForMangle = concreteTypes;
-    string instantiatedName = mangleName(this->getName(), buildTypes->name(returnType), paramsForMangle);
+    string instantiatedName = mangleName(this->getName(), buildTypes->name(returntype), paramsForMangle);
 
     if (Node *exists = program->findSymbol(instantiatedName))
         return exists; // já instanciado → reuse
@@ -209,49 +198,49 @@ Node *TemplateImpl::generateFor(const vector<string> &concreteTypes)
     location_t loc = this->sloc;
     location_t ef = this->sloc;
 
-    FunctionImpl *newFunc = new FunctionImpl(returnType, instantiatedName, parameters, std::move(newBody), loc, ef, this->constructor);
+    FunctionImpl *newFunc = new FunctionImpl(returntype, instantiatedName, parameters, std::move(newBody), loc, ef, this->constructor);
     newFunc->setScope(program);
 
-    // ==============================================================
-    // 🧩 DEBUG: LOG COMPLETO - ANTES DA EXPANSÃO
-    // ==============================================================
+    // // ==============================================================
+    // // 🧩 DEBUG: LOG COMPLETO - ANTES DA EXPANSÃO
+    // // ==============================================================
 
-    std::cout << "\n\n========== [DEBUG: BEFORE TEMPLATE EXPANSION] ==========\n";
-    std::cout << "Template base: " << this->getName() << std::endl;
-    std::cout << "Instância gerada: " << instantiatedName << std::endl;
+    // std::cout << "\n\n========== [DEBUG: BEFORE TEMPLATE EXPANSION] ==========\n";
+    // std::cout << "Template base: " << this->getName() << std::endl;
+    // std::cout << "Instância gerada: " << instantiatedName << std::endl;
 
-    std::cout << "\n-- Substitution Map --\n";
-    for (auto &pair : substitutionMap)
-        std::cout << "  " << pair.first << " -> " << buildTypes->name(pair.second)
-                  << " (tid=" << pair.second << ")\n";
+    // std::cout << "\n-- Substitution Map --\n";
+    // for (auto &pair : substitutionMap)
+    //     std::cout << "  " << pair.first << " -> " << buildTypes->name(pair.second)
+    //               << " (tid=" << pair.second << ")\n";
 
-    std::cout << "\n-- Tipo de Retorno --\n";
-    std::cout << "  templ_dt = '" << templ_dt << "'\n";
-    std::cout << "  returnType = " << buildTypes->name(returnType)
-              << " (tid=" << returnType << ")\n";
+    // std::cout << "\n-- Tipo de Retorno --\n";
+    // std::cout << "  returnType = '" << returnType << "'\n";
+    // std::cout << "  returnType = " << buildTypes->name(returnType)
+    //           << " (tid=" << returnType << ")\n";
 
-    std::cout << "\n-- Parâmetros Originais do Template --\n";
-    for (Variable *origVar : this->getParameters().getParameters())
-        std::cout << "  " << origVar->getIdent().getFullName() << " : "
-                  << buildTypes->name(origVar->getDataType())
-                  << " (tid=" << origVar->getDataType() << ")\n";
+    // std::cout << "\n-- Parâmetros Originais do Template --\n";
+    // for (Variable *origVar : this->getParameters().getParameters())
+    //     std::cout << "  " << origVar->getIdent().getFullName() << " : "
+    //               << buildTypes->name(origVar->getDataType())
+    //               << " (tid=" << origVar->getDataType() << ")\n";
 
-    std::cout << "\n-- Parâmetros Substituídos (newFunc) --\n";
-    for (Variable *nv : newFunc->getParameters().getParameters())
-        std::cout << "  " << nv->getIdent().getFullName() << " : "
-                  << buildTypes->name(nv->getDataType())
-                  << " (tid=" << nv->getDataType() << ")\n";
+    // std::cout << "\n-- Parâmetros Substituídos (newFunc) --\n";
+    // for (Variable *nv : newFunc->getParameters().getParameters())
+    //     std::cout << "  " << nv->getIdent().getFullName() << " : "
+    //               << buildTypes->name(nv->getDataType())
+    //               << " (tid=" << nv->getDataType() << ")\n";
 
-    std::cout << "\n-- Corpo Original do Template (this->node_children) --\n";
-    if (this->node_children.empty())
-        std::cout << "  (sem nós)\n";
-    else
-        for (Node *origChild : this->node_children)
-            std::cout << "  Nó: " << typeid(*origChild).name()
-                      << " @ " << (void *)origChild
-                      << " tipo=" << buildTypes->name(origChild->getDataType())
-                      << " (tid=" << origChild->getDataType() << ")\n";
-    std::cout << "=========================================================\n\n";
+    // std::cout << "\n-- Corpo Original do Template (this->node_children) --\n";
+    // if (this->node_children.empty())
+    //     std::cout << "  (sem nós)\n";
+    // else
+    //     for (Node *origChild : this->node_children)
+    //         std::cout << "  Nó: " << typeid(*origChild).name()
+    //                   << " @ " << (void *)origChild
+    //                   << " tipo=" << buildTypes->name(origChild->getDataType())
+    //                   << " (tid=" << origChild->getDataType() << ")\n";
+    // std::cout << "=========================================================\n\n";
 
     // ==============================================================
     // ⚙️ EXPANSÃO DO CORPO
@@ -303,28 +292,28 @@ Node *TemplateImpl::generateFor(const vector<string> &concreteTypes)
     // 🧠 DEBUG: LOG COMPLETO - DEPOIS DA EXPANSÃO
     // ==============================================================
 
-    std::cout << "\n\n========== [DEBUG: AFTER TEMPLATE EXPANSION] ==========\n";
-    std::cout << "Função instanciada: " << instantiatedName << std::endl;
-    std::cout << "Tipo de retorno final: " << buildTypes->name(newFunc->getDataType())
-              << " (tid=" << newFunc->getDataType() << ")\n";
+    // std::cout << "\n\n========== [DEBUG: AFTER TEMPLATE EXPANSION] ==========\n";
+    // std::cout << "Função instanciada: " << instantiatedName << std::endl;
+    // std::cout << "Tipo de retorno final: " << buildTypes->name(newFunc->getDataType())
+    //           << " (tid=" << newFunc->getDataType() << ")\n";
 
-    std::cout << "\n-- Parâmetros Finais --\n";
-    for (Variable *nv : newFunc->getParameters().getParameters())
-        std::cout << "  " << nv->getIdent().getFullName() << " : "
-                  << buildTypes->name(nv->getDataType())
-                  << " (tid=" << nv->getDataType() << ")\n";
+    // std::cout << "\n-- Parâmetros Finais --\n";
+    // for (Variable *nv : newFunc->getParameters().getParameters())
+    //     std::cout << "  " << nv->getIdent().getFullName() << " : "
+    //               << buildTypes->name(nv->getDataType())
+    //               << " (tid=" << nv->getDataType() << ")\n";
 
-    std::cout << "\n-- Corpo Expandido (newFunc->node_children) --\n";
-    if (newFunc->children().empty())
-        std::cout << "  (sem nós gerados)\n";
-    else
-        for (Node *child : newFunc->children())
-            std::cout << "  Nó expandido: " << typeid(*child).name()
-                      << " @ " << (void *)child
-                      << " tipo=" << buildTypes->name(child->getDataType())
-                      << " (tid=" << child->getDataType() << ")\n";
+    // std::cout << "\n-- Corpo Expandido (newFunc->node_children) --\n";
+    // if (newFunc->children().empty())
+    //     std::cout << "  (sem nós gerados)\n";
+    // else
+    //     for (Node *child : newFunc->children())
+    //         std::cout << "  Nó expandido: " << typeid(*child).name()
+    //                   << " @ " << (void *)child
+    //                   << " tipo=" << buildTypes->name(child->getDataType())
+    //                   << " (tid=" << child->getDataType() << ")\n";
 
-    std::cout << "=========================================================\n\n";
+    // std::cout << "=========================================================\n\n";
 
     // ==============================================================
     // 🔚 Registro da nova função
@@ -333,7 +322,7 @@ Node *TemplateImpl::generateFor(const vector<string> &concreteTypes)
     program->addChild(newFunc);
     program->addSymbol(newFunc);
 
-    std::cout << "[TemplateImpl] Função instanciada registrada: " << instantiatedName << std::endl;
+    //std::cout << "[TemplateImpl] Função instanciada registrada: " << instantiatedName << std::endl;
 
     return newFunc;
 }

@@ -20,7 +20,7 @@ public:
                  ParamsCall *args, // <-- receba do .y
                  location_t loc)
         : Node(loc), ident_(id), templateArgs_(std::move(tplArgs)), args_(args)
-    {
+    {  
     }
 
     const Identifier &getIdent() const { return ident_; }
