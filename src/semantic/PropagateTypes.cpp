@@ -1,17 +1,38 @@
 
 #include "PropagateTypes.h"
 #include "ConstructorCall.h"
+#include "FunctionCall.h"
+#include "TemplateImpl.h"
 #include "Scalar.h"
 #include "Program.h"
+#include <typeinfo>
+
+// void PropagateTypes::propagateChildren(Node& n, std::function<void(Node&)> lambda) {
+//     for (auto it = n.node_children.begin(); it != n.node_children.end(); ++it) {
+//         Node *replace = (*it)->accept(*this);
+//         if (replace) {
+//             *it = replace;
+//         }
+//         if (lambda)
+//             lambda(**it);
+//     }
+// }
 
 void PropagateTypes::propagateChildren(Node& n, std::function<void(Node&)> lambda) {
     for (auto it = n.node_children.begin(); it != n.node_children.end(); ++it) {
-        Node *replace = (*it)->accept(*this);
-        if (replace) {
-            *it = replace;
+        Node *oldChild = *it;
+        Node *repl = oldChild->accept(*this);
+        if (repl && repl != oldChild) {
+            // Se o nó substituto não tem scope, herda do pai imediato (n)
+            if (!repl->getScope()) {
+                repl->setScope(&n); // pai na AST
+            }
+            *it = repl;
+
+            // Re-visita o nó novo (agora com scope garantido)
+            repl->accept(*this);
         }
-        if (lambda)
-            lambda(**it);
+        if (lambda) lambda(**it);
     }
 }
 
@@ -284,44 +305,106 @@ Node* PropagateTypes::visit(CmpOp& n) {
 
 Node* PropagateTypes::visit(FunctionImpl& n) {
 
-    // Salva contexto anterior
-    DataType prevDt = currentFunctionDt;
 
-    // Define contexto da função atual ANTES de visitar os filhos
+
+    // Salva contexto anterior
+  
     currentFunctionDt = n.getDataType();
-    if (currentFunctionDt == BuildTypes::undefinedType) {
-        // Se por algum motivo a instância ainda não setou o retorno,
-        // trate como void para não quebrar os returns "simples".
-        currentFunctionDt = tvoid;
+    propagateChildren(n);
+    currentFunctionDt = BuildTypes::undefinedType;
+
+ 
+    for (auto *t : n.node_children) {
+        if (!t)
+            continue;
+
+        // Pega o nome da classe (tipo dinâmico do nó)
+        const char *className = typeid(*t).name(); // precisa de <typeinfo>
+
+        std::cerr << "Filho: " << t->getName()
+                  << " | Tipo do nó: " << className
+                  << " | DataType: " << buildTypes->name(t->getDataType())
+                  << " | findSymbol: " << t->findSymbol(t->getName())
+                  << std::endl;
     }
 
-    // Agora propague nos filhos (params, corpo etc.)
-    // Se você já tinha uma versão específica, mantenha-a;
-    // o importante é que o contexto já está definido antes de descer.
-    propagateChildren(n);
-
-    // Restaura contexto
-    currentFunctionDt = prevDt;
-
-    /*currentFunctionDt = n.getDataType();
-    propagateChildren(n);
-    currentFunctionDt = BuildTypes::undefinedType;*/
     return NULL;
 }
 
 Node* PropagateTypes::visit(TemplateImpl& n) {
+
     return NULL;
 }
 
-Node* PropagateTypes::visit(TemplateCall &n) {
-    // Fase semântica: resolve TemplateCall -> (instancia) -> FunctionCall
-    Node *replacement = n.instantiateAndLower();
-    if (!replacement) return nullptr; // manterá o nó original, mas com erro reportado
+ Node* PropagateTypes::visit(TemplateCall& n){
 
-    // Como substituiremos o nó na AST do pai, devolvemos o replacement para o
-    // mecanismo do propagateChildren()
-    return replacement;
+   ParamsCall *newParams = new ParamsCall();
+    for (Node *param : n.getParameters())
+    {
+        newParams->append(param);
+    }
+
+    const std::string baseName = n.getIdent().getFullName();
+
+    // 1) lookup do TemplateImpl 
+    TemplateImpl *templImpl = nullptr;
+
+     if (!n.getScope())
+        templImpl =  nullptr;
+
+    // 1) tenta resolver no escopo atual
+    Identifier templ_ident(baseName, n.getLoc());
+    if (Node *sym = templ_ident.getSymbol(n.getScope()))
+    {
+        if (auto *ti = dynamic_cast<TemplateImpl *>(sym))
+             templImpl = ti;
+              
+    }
+
+    // 2) fallback global no Program
+    if (program)
+    {
+        Identifier glob(baseName, n.getLoc());
+        if (Node *s = glob.getSymbol(program))
+        {
+            if (auto *ti2 = dynamic_cast<TemplateImpl *>(s))
+                templImpl = ti2;
+        }
+    }
+
+    if (!templImpl)
+    {
+        // NÃO é template → vira FunctionCall do nome base, usando os MESMOS argumentos
+        auto *call = new FunctionCall(baseName, newParams, n.getLoc()); // <-- AQUI
+        call->setScope(n.getScope());
+        return call;
+    }
+
+    // 2) instanciar
+    FunctionImpl *instNode = templImpl->generateFor(n.getTemplateArgs());
+
+    cerr << "[DEBUG] inst " << instNode->getName()
+         << " ret=" << buildTypes->name(instNode->getDataType()) << "\n";
+    for (auto *v : instNode->getParameters().getParameters())
+    {
+        cerr << "  param " << v->getName() << " : " << buildTypes->name(v->getDataType()) << "\n";
+    }
+
+    // auto *concreteFunc = dynamic_cast<FunctionImpl *>(instNode);
+    // if (!concreteFunc)
+    // {
+    //     yyerrorcpp("Template instantiation did not produce a FunctionImpl for '" + baseName + "'.", &n);
+    //     return nullptr;
+    // }
+
+
+    auto *call = new FunctionCall(instNode->getName(), newParams, n.getLoc()); // <-- AQUI
+    call->setScope(n.getScope());
+    call->setDataType(instNode->getDataType());
+
+    return call;
 }
+
 
 Node* PropagateTypes::visit(Return& n) {
     if (!n.value()) {
@@ -368,6 +451,22 @@ Node* PropagateTypes::visit(Return& n) {
 }
 
 Node* PropagateTypes::visit(FunctionCall& fc) {
+
+    Node* sc = fc.getScope();
+if (!sc) {
+    yywarncpp(std::string("[PT] FunctionCall '") + fc.getName() +
+              "' sem escopo no momento da visita; atribuindo escopo do programa.", &fc);
+    
+              if (program) {
+        fc.setScope(program);
+        sc = program;
+    } else {
+        // se realmente não há program, não dá pra continuar:
+        return &fc;
+    }
+}
+
+
     propagateChildren(fc);
     
     // if the function name is the name of a primitive or complex type,
@@ -420,6 +519,10 @@ Node* PropagateTypes::visit(FunctionCall& fc) {
             calledFuncParam++;
             passedParam++;
         }
+    }
+
+for(auto *t : fc.children()) {
+       std::cerr << "Escopo da chamada de função: " << t->getScope()->getName() << " Type: " << buildTypes->name(t->getDataType()) << "\n";
     }
 
     return NULL;

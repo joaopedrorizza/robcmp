@@ -13,6 +13,25 @@
 extern Program *program;
 extern std::unique_ptr<BuildTypes> buildTypes;
 
+
+DataType TemplateCall::getDataType() {
+    
+    if (dt == BuildTypes::undefinedType) {
+        // is a constructor? this can occur while running PropagateTypes.
+        dt = buildTypes->getType(ident.getFullName());
+        if (node_children.size() <= 1 && dt != BuildTypes::undefinedType) {
+            return dt;
+        }
+
+        if (!symbol)
+            symbol = ident.getSymbol(getScope());
+
+        if (symbol)
+            dt = symbol->getDataType();
+    }
+    return dt;
+}
+
 static TemplateImpl *lookupTemplateImpl(Node *scope, const std::string &baseName, location_t loc)
 {
     if (!scope)
@@ -39,24 +58,31 @@ static TemplateImpl *lookupTemplateImpl(Node *scope, const std::string &baseName
     return nullptr;
 }
 
-Node *TemplateCall::instantiateAndLower()
+/*const std::string TemplateCall::instantiate(const string& baseName)
 {
-    const std::string baseName = ident_.getFullName();
+
+       ParamsCall *newParams = new ParamsCall();
+    for (Node *param : this->getParameters())
+    {
+        newParams->append(param);
+    }
+   //const std::string baseName = ident.getFullName();
 
     // 1) lookup do TemplateImpl 
     TemplateImpl *templImpl = lookupTemplateImpl(getScope(), baseName, getLoc());
     if (!templImpl)
     {
         // NÃO é template → vira FunctionCall do nome base, usando os MESMOS argumentos
-        auto *call = new FunctionCall(baseName, args_, getLoc()); // <-- AQUI
+        auto *call = new FunctionCall(baseName, newParams, getLoc()); // <-- AQUI
         call->setScope(getScope());
-        if (leftValue_)
-            call->setLeftValue(leftValue_);
+        if (leftValue)
+            call->setLeftValue(leftValue);
         return call;
     }
 
     // 2) instanciar
     Node *instNode = templImpl->generateFor(this->getTemplateArgs());
+
     auto *concreteFunc = dynamic_cast<FunctionImpl *>(instNode);
     if (!concreteFunc)
     {
@@ -64,18 +90,15 @@ Node *TemplateCall::instantiateAndLower()
         return nullptr;
     }
 
-    // 4) baixar para chamada concreta, **preservando os MESMOS argumentos**
-    auto *call = new FunctionCall(concreteFunc->getName(), args_, getLoc()); // <-- AQUI
-    call->setScope(getScope());
-    if (leftValue_)
-        call->setLeftValue(leftValue_);
+    //FunctionCall *call = new FunctionCall(concreteFunc->getName(), newParams, getLoc()); // <-- AQUI
+    //call->setScope(getScope());
 
     //(log opcional)
     std::cerr << "[TemplateCall] Lowered " << baseName << " to "
               << concreteFunc->getName() << " with params from ParamsCall\n";
 
-    return call;
-}
+    return concreteFunc->getName();
+}*/
 
 Value *TemplateCall::generate(FunctionImpl *, BasicBlock *, BasicBlock *)
 {

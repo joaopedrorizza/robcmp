@@ -15,7 +15,6 @@
 #include "semantic/PropagateTypes.h"
 #include "semantic/SymbolizeTree.h"
 #include "semantic/VirtualDispatchPasses.h"
-#include "semantic/ExpandTemplates.h"
 
 Program::Program() : Node({0,0,0,0}) {
 	mainmodule = new Module(this->getFile(), global_context);
@@ -228,8 +227,8 @@ void Program::doSemanticAnalysis() {
 	SymbolizeTree st;
 	st.visit(*this);
 
-	/*ExpandTemplates et;
-	et.visit(*this);*/
+	// ExpandTemplates et;
+	// et.visit(*this);
 
 	IdentifyVirtualDispatch ivd;
 	ivd.visit(*this);

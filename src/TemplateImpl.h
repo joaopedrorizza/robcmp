@@ -3,6 +3,7 @@
 
 #include "Node.h"
 #include "FunctionDecl.h"
+#include "FunctionImpl.h"
 #include "BackLLVM.h"
 
 class TemplateImpl : public FunctionBase
@@ -37,7 +38,7 @@ public:
 
     Value *generate(FunctionImpl *, BasicBlock *, BasicBlock *allocblock) override;
 
-    Node *generateFor(const vector<string> &concreteTypes);
+    FunctionImpl *generateFor(const vector<string> &concreteTypes);
 
     string mangleName(string baseName, string returnType_, vector<string> &params);
 

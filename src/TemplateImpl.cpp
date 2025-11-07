@@ -3,10 +3,12 @@
 #include "FunctionImpl.h"
 #include "SourceLocation.h"
 #include "BuildTypes.h"
+#include "Return.h"
+#include "Variable.h"
+#include "Scalar.h"
 #include "TemplateParamNode.h"
 #include "semantic/PropagateTypes.h"
 #include "semantic/Visitor.h"
-#include "semantic/ExpandTemplates.h"
 #include <memory>
 #include <sstream>
 #include <algorithm>
@@ -127,14 +129,89 @@ string TemplateImpl::mangleName(string baseName, string returnType_, vector<stri
     return os.str();
 }
 
-Node *TemplateImpl::generateFor(const vector<string> &concreteTypes)
+
+static Node* cloneExprWithSubs(Node* e,
+                               const std::map<std::string, DataType>& subMap,
+                               Node* newScope)
+{
+    if (!e) return nullptr;
+
+    // 1) Variable
+    if (auto* v = dynamic_cast<Variable*>(e)) {
+        auto* nv = new Variable(v->getName(), v->getDataType(), v->getLoc());
+        nv->setScope(nullptr,true);
+        if (auto it = subMap.find(v->getDataTypeName()); it != subMap.end())
+            nv->setDataType(it->second);
+        return nv;
+    }
+
+    // 2) Scalar
+    if (auto* s = dynamic_cast<Scalar*>(e)) {
+        Node* rhs = cloneExprWithSubs(s->getExpr(), subMap, newScope);
+        auto* ns = new Scalar(s->getName(), rhs);
+        ns->setScope(nullptr, true);
+        if (auto it = subMap.find(s->getDataTypeName()); it != subMap.end())
+            ns->setDataType(it->second);
+        else
+            ns->setDataType(s->getDataType());
+        return ns;
+    }
+
+    // 3) Return (em expressão é raro; por segurança)
+    if (auto* r = dynamic_cast<Return*>(e)) {
+        Node* val = cloneExprWithSubs(r->value(), subMap, newScope);
+        Return* nr = val ? new Return(val) : new Return(r->getLoc());
+        nr->setScope(nullptr,true);
+        if (val) {
+            if (auto it = subMap.find(buildTypes->name(val->getDataType())); it != subMap.end()) {
+                val->setDataType(it->second);
+                nr->setDataType(it->second);
+            } else {
+                nr->setDataType(val->getDataType());
+            }
+        } else {
+            nr->setDataType(tvoid);
+        }
+        return nr;
+    }
+
+    // 4) FunctionCall
+    if (auto* fc = dynamic_cast<FunctionCall*>(e)) {
+        auto* newParams = new ParamsCall();
+        for (auto* p : fc->getParameters()) {
+            Node* pc = cloneExprWithSubs(p, subMap, newScope);
+            if (!pc) pc = p; // último recurso: mantém, mas sem mexer no scope
+            newParams->append(pc);
+        }
+        auto* nfc = new FunctionCall(fc->getName(), newParams, fc->getLoc());
+        nfc->setScope(nullptr,true);
+        // opcional: substituir tipo de retorno se for genérico
+        if (auto it = subMap.find(buildTypes->name(nfc->getDataType())); it != subMap.end())
+            nfc->setDataType(it->second);
+        else
+            nfc->setDataType(fc->getDataType());
+        return nfc;
+    }
+
+    // 5) TemplateCall — NÃO reusar alterando scope (pode já ter scope)
+    if (auto* tc = dynamic_cast<TemplateCall*>(e)) {
+        // Melhor: crie um "clone" de TemplateCall se você tiver construtores públicos.
+        // Se não for possível agora, devolva o próprio ponteiro SEM mexer no scope:
+        return tc; // cuidado: não chamar setScope(tc, ...) aqui!
+    }
+
+    // 6) Literais/Outros tipos tipados? (adicione casos conforme existirem)
+
+    // 7) Fallback: por segurança, NÃO reusar e setar scope (evita o assert).
+    // Em vez disso, retorne nullptr e trate onde for usado.
+    return e;
+}
+
+
+FunctionImpl *TemplateImpl::generateFor(const vector<string> &concreteTypes)
 {
 
-    std::cout << "[TemplateImpl] Gerando instância para: " << this->getName() << std::endl;
-    for (const auto &t : concreteTypes)
-    {
-        std::cout << "  - Tipo concreto: " << t << std::endl;
-    }
+    FunctionImpl *newFunc;
 
     // 1) validação
     if (params.size() != concreteTypes.size())
@@ -164,165 +241,162 @@ Node *TemplateImpl::generateFor(const vector<string> &concreteTypes)
     }
 
     // 3) determinar tipo de retorno concreto (se o retorno for T, substitui)
-    DataType returntype;
-
+    DataType newRt;
+    
         auto resp = substitutionMap.find(returnType);
         if (resp == substitutionMap.end())
         {
-            returntype = buildTypes->getType(returnType);
+            newRt = buildTypes->getType(returnType);
         }
         else
         {
-            returntype = resp->second;
+            newRt = resp->second;
         }
 
     // 4) gerar nome mangleado (string que identifica a instância)
     vector<string> paramsForMangle = concreteTypes;
-    string instantiatedName = mangleName(this->getName(), buildTypes->name(returntype), paramsForMangle);
+    string instantiatedName = mangleName(this->getName(), buildTypes->name(newRt), paramsForMangle);
 
-    if (Node *exists = program->findSymbol(instantiatedName))
-        return exists; // já instanciado → reuse
-
-    // Step 6: Substituição dos parametros de template nos argumentos da função
-    for (Variable *origVar : parameters->getParameters()) {
-        auto resp = substitutionMap.find(origVar->getDataTypeName());
-        if (resp != substitutionMap.end()) {
-            origVar->setDataType(resp->second);
+    //FunctionParams *newFp = new FunctionParams();
+    if (Node *exists = program->findSymbol(instantiatedName)) {
+        auto finded = dynamic_cast<FunctionImpl*>(exists);
+        return finded; // já instanciado → reuse
         }
+
+// Cria um novo conjunto de parâmetros para a instância
+FunctionParams *newParams = new FunctionParams();
+
+for (Variable *var : parameters->getParameters()) {
+    // Descobre o tipo concreto
+
+    Variable *newVar = new Variable(*var);
+
+    auto it = substitutionMap.find(var->getDataTypeName());
+    if (it != substitutionMap.end())
+    newVar->setDataType(it->second);       
+newParams->append(newVar);
+
+}
+
+vector<Node*> newBody;
+
+for (Node *origChild : this->node_children)
+{
+    if(auto *t = dynamic_cast<Return*>(origChild)){
+        Node *newNode = (origChild->getLoc());
+        Return *ret = new Return(origChild->getLoc());
+        newBody.push_back(ret);
     }
 
-    // 7) Construir vector<Node*> vazio para o corpo; popularemos usando ExpandTemplates
-    vector<Node *> newBody = this->node_children;
+    
+ /*if (!origChild) continue;
+
+    // --- Caso: Scalar (declaração com inicialização)
+    if (auto *origScalar = dynamic_cast<Scalar*>(origChild))
+    {
+        std::cerr << "[DEBUG] Expandindo Scalar: " << origScalar->getName() << "\n";
+
+        Node* exprClone = cloneExprWithSubs(origScalar->getExpr(), substitutionMap, newFunc);
+
+        if (!exprClone) {
+    yyerrorcpp("Erro interno: Scalar '" + origScalar->getName() +
+               "' não pôde ter sua expressão clonada ao instanciar template '" +
+               this->getName() + "'", this);
+    continue; // NÃO criar o Scalar!
+}
+
+        Scalar* newScalar = new Scalar(origScalar->getName(), exprClone);
+        newScalar->setScope(nullptr,true);
+
+        // Tipo do Scalar (T -> concreto)
+        auto it = substitutionMap.find(origScalar->getDataTypeName());
+        if (it != substitutionMap.end()) newScalar->setDataType(it->second);
+        else newScalar->setDataType(origScalar->getDataType());
+
+        newScalar->setUsed(false);
+
+        newBody.push_back(newScalar);
+        continue;
+    }
+
+    // --- Caso: Return
+    if (auto *origRet = dynamic_cast<Return*>(origChild))
+    {
+        std::cerr << "[DEBUG] Expandindo Return em " << instantiatedName << "\n";
+
+        Node* exprClone = cloneExprWithSubs(origRet->value(), substitutionMap, newFunc);
+
+        Return* newRet = exprClone ? new Return(exprClone)
+                                   : new Return(origRet->getLoc());
+        //newRet->setScope(newFunc);
+
+        if (exprClone) {
+            auto it = substitutionMap.find(buildTypes->name(exprClone->getDataType()));
+            if (it != substitutionMap.end()) { exprClone->setDataType(it->second); newRet->setDataType(it->second); }
+            else newRet->setDataType(exprClone->getDataType());
+        } else {
+            newRet->setDataType(tvoid);
+        }
+
+        newBody.push_back(newRet);
+        continue;
+    }
+
+    // --- Caso: Variable simples
+    if (auto* var = dynamic_cast<Variable*>(origChild))
+    {
+        std::cerr << "[DEBUG] Expandindo Variable: " << var->getName() << "\n";
+
+        Variable* newVar = new Variable(var->getName(), var->getDataType(), var->getLoc());
+        newVar->setScope(nullptr,true);
+
+        auto it = substitutionMap.find(var->getDataTypeName());
+        if (it != substitutionMap.end()) newVar->setDataType(it->second);
+
+        newBody.push_back(newVar);
+        continue;
+    }
+
+    // --- Caso: Return já foi tratado; FunctionCall concreto (se aparecer no corpo)
+    if (auto* fc = dynamic_cast<FunctionCall*>(origChild))
+    {
+        // Recria com params clonados
+        ParamsCall* clonedParams = new ParamsCall();
+        for (auto* p : fc->getParameters()) {
+            Node* pc = cloneExprWithSubs(p, substitutionMap, newFunc);
+            if (!pc) pc = p;
+            clonedParams->append(pc);
+        }
+        auto* nfc = new FunctionCall(fc->getName(), clonedParams, fc->getLoc());
+        nfc->setScope(nullptr,true);
+        nfc->setDataType(fc->getDataType());
+        auto it = substitutionMap.find(buildTypes->name(nfc->getDataType()));
+        if (it != substitutionMap.end()) nfc->setDataType(it->second);
+        newBody.push_back(nfc);
+        continue;
+    }
+
+    // --- Caso: nó não suportado ainda → reusa ponteiro com escopo ajustado (fallback seguro)
+    {
+        std::cerr << "[WARN] Nó não expandido: " << typeid(*origChild).name()
+                  << " — reutilizando nó original com escopo atualizado.\n";
+        origChild->setScope(nullptr, true);
+        newBody.push_back(origChild);
+    }
+}*/
+
+
+}
 
     // 8) Construir a nova FunctionImpl (obs.: verifique assinatura do seu constructor)
     location_t loc = this->sloc;
     location_t ef = this->sloc;
 
-    FunctionImpl *newFunc = new FunctionImpl(returntype, instantiatedName, parameters, std::move(newBody), loc, ef, this->constructor);
-    newFunc->setScope(program);
+     newFunc = new FunctionImpl(newRt, instantiatedName, newParams, std::move(newBody), loc, ef, this->constructor);
 
-    // // ==============================================================
-    // // 🧩 DEBUG: LOG COMPLETO - ANTES DA EXPANSÃO
-    // // ==============================================================
-
-    // std::cout << "\n\n========== [DEBUG: BEFORE TEMPLATE EXPANSION] ==========\n";
-    // std::cout << "Template base: " << this->getName() << std::endl;
-    // std::cout << "Instância gerada: " << instantiatedName << std::endl;
-
-    // std::cout << "\n-- Substitution Map --\n";
-    // for (auto &pair : substitutionMap)
-    //     std::cout << "  " << pair.first << " -> " << buildTypes->name(pair.second)
-    //               << " (tid=" << pair.second << ")\n";
-
-    // std::cout << "\n-- Tipo de Retorno --\n";
-    // std::cout << "  returnType = '" << returnType << "'\n";
-    // std::cout << "  returnType = " << buildTypes->name(returnType)
-    //           << " (tid=" << returnType << ")\n";
-
-    // std::cout << "\n-- Parâmetros Originais do Template --\n";
-    // for (Variable *origVar : this->getParameters().getParameters())
-    //     std::cout << "  " << origVar->getIdent().getFullName() << " : "
-    //               << buildTypes->name(origVar->getDataType())
-    //               << " (tid=" << origVar->getDataType() << ")\n";
-
-    // std::cout << "\n-- Parâmetros Substituídos (newFunc) --\n";
-    // for (Variable *nv : newFunc->getParameters().getParameters())
-    //     std::cout << "  " << nv->getIdent().getFullName() << " : "
-    //               << buildTypes->name(nv->getDataType())
-    //               << " (tid=" << nv->getDataType() << ")\n";
-
-    // std::cout << "\n-- Corpo Original do Template (this->node_children) --\n";
-    // if (this->node_children.empty())
-    //     std::cout << "  (sem nós)\n";
-    // else
-    //     for (Node *origChild : this->node_children)
-    //         std::cout << "  Nó: " << typeid(*origChild).name()
-    //                   << " @ " << (void *)origChild
-    //                   << " tipo=" << buildTypes->name(origChild->getDataType())
-    //                   << " (tid=" << origChild->getDataType() << ")\n";
-    // std::cout << "=========================================================\n\n";
-
-    // ==============================================================
-    // ⚙️ EXPANSÃO DO CORPO
-    // ==============================================================
-
-    /*ExpandTemplates expander(&substitutionMap);
-    for (Node *origChild : this->node_children)
-    {
-        Node *expanded = nullptr;
-        try
-        {
-            expanded = origChild ? origChild->accept(expander) : nullptr;
-        }
-        catch (...)
-        {
-            expanded = nullptr;
-        }
-
-        if (expanded)
-        {
-            expanded->setScope(newFunc);
-            std::cerr << "[DEBUG][instantiate] Filho expandido: " << expanded->node_kind
-                      << " scope=" << (expanded->getScope() ? "OK" : "NULL") << "\n";
-            newFunc->addChild(expanded);
-        }
-        else
-        {
-            std::cout << "[TemplateImpl] Falha ao expandir nó: "
-                      << (origChild ? typeid(*origChild).name() : "<null>") << std::endl;
-
-            // fallback simples
-            if (auto *ret = dynamic_cast<Return *>(origChild))
-            {
-                Node *newExpr = nullptr;
-                if (!ret->children().empty() && ret->children()[0])
-                {
-                    Node *exp = ret->children()[0]->accept(expander);
-                    newExpr = exp ? exp : ret->children()[0];
-                }
-                Node *nr = newExpr ? static_cast<Node *>(new Return(newExpr))
-                                   : static_cast<Node *>(new Return(ret->getLoc()));
-                nr->setScope(newFunc);
-                newFunc->addChild(nr);
-            }
-        }
-    }*/
-
-    // ==============================================================
-    // 🧠 DEBUG: LOG COMPLETO - DEPOIS DA EXPANSÃO
-    // ==============================================================
-
-    // std::cout << "\n\n========== [DEBUG: AFTER TEMPLATE EXPANSION] ==========\n";
-    // std::cout << "Função instanciada: " << instantiatedName << std::endl;
-    // std::cout << "Tipo de retorno final: " << buildTypes->name(newFunc->getDataType())
-    //           << " (tid=" << newFunc->getDataType() << ")\n";
-
-    // std::cout << "\n-- Parâmetros Finais --\n";
-    // for (Variable *nv : newFunc->getParameters().getParameters())
-    //     std::cout << "  " << nv->getIdent().getFullName() << " : "
-    //               << buildTypes->name(nv->getDataType())
-    //               << " (tid=" << nv->getDataType() << ")\n";
-
-    // std::cout << "\n-- Corpo Expandido (newFunc->node_children) --\n";
-    // if (newFunc->children().empty())
-    //     std::cout << "  (sem nós gerados)\n";
-    // else
-    //     for (Node *child : newFunc->children())
-    //         std::cout << "  Nó expandido: " << typeid(*child).name()
-    //                   << " @ " << (void *)child
-    //                   << " tipo=" << buildTypes->name(child->getDataType())
-    //                   << " (tid=" << child->getDataType() << ")\n";
-
-    // std::cout << "=========================================================\n\n";
-
-    // ==============================================================
-    // 🔚 Registro da nova função
-    // ==============================================================
-
+     newFunc->setScope(program);
     program->addChild(newFunc);
     program->addSymbol(newFunc);
-
-    //std::cout << "[TemplateImpl] Função instanciada registrada: " << instantiatedName << std::endl;
 
     return newFunc;
 }
