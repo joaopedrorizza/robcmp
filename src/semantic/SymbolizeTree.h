@@ -30,9 +30,10 @@ public:
 
     virtual Node* visit(FunctionImpl& n) override {
         for(auto arg : n.getParameters().getParameters()) {
+            arg->setScope(&n);
             n.addSymbol(arg);
         }
-        return visit((Node&)n);
+        return visit((FunctionBase&)n);
     }
 
     virtual Node* visit(Array& n) override {
