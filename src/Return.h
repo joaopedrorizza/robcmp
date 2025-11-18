@@ -14,7 +14,7 @@ public:
 		addChild(n);
 	}
 
-	Return(const Return& r) : Cloneable<Return>(r) {}
+	Return(const Return& r, TypeSubs& ts) : Cloneable<Return>(r) {}
 
 	Node *value() {
 		if (node_children.empty())

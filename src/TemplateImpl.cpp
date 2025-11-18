@@ -274,7 +274,7 @@ FunctionImpl *TemplateImpl::generateFor(const vector<string> &concreteTypes, Sou
 
     vector<Node*> newBody;
     for(Node *children : this->node_children) {
-        newBody.push_back(children->cloneTree());
+        newBody.push_back(children->cloneTree(substitutionMap));
     }
 
     // 8) Construir a nova FunctionImpl (obs.: verifique assinatura do seu constructor)

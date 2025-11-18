@@ -10,7 +10,7 @@ private:
 public:
 	Int64(int64_t n, location_t loc): Cloneable<Int64>(loc), number(n) {}
 	
-	Int64(const Int64& n): Cloneable<Int64>(n.getLoc()), number(n.number) {}
+	Int64(const Int64& n, TypeSubs& ts): Cloneable<Int64>(n.getLoc()), number(n.number) {}
 
 	int64_t getNumber() const { return number; }
 	

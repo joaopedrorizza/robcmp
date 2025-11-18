@@ -11,7 +11,7 @@ private:
 public:
 	BinaryOp(Node *l, int op, Node *r);
 
-	BinaryOp(const BinaryOp& b) : Cloneable<BinaryOp>(b), op(b.op) {}
+	BinaryOp(const BinaryOp& b, TypeSubs& ts) : Cloneable<BinaryOp>(b), op(b.op) {}
 
 	Value *logical_operator(enum Instruction::BinaryOps op, 
 		FunctionImpl *func, BasicBlock *block, BasicBlock *allocblock);

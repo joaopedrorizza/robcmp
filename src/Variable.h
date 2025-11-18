@@ -26,7 +26,7 @@ public:
 		this->dts = dts;
 	}
 
-	Variable(const Variable& v) : Cloneable<Variable, NamedNode>(v), ident(v.ident), dts(v.dts) {}
+	Variable(const Variable& v, TypeSubs& ts) : Cloneable<Variable, NamedNode>(v), ident(v.ident), dts(v.dts) {}
 
     virtual Value* getLLVMValue(Node *stem, FunctionImpl *gfunc = NULL) override;
 	

@@ -10,6 +10,8 @@ class UserType;
 class FunctionImpl;
 class Variable;
 
+typedef std::map<string, DataType> TypeSubs;
+
 class Node : public SourceLocation {
 protected:
 	map<string, NamedNode*> symbols;
@@ -100,23 +102,11 @@ public:
 		pointerToPointer = v;
 	}
 
-	virtual Node* cloneShallow() const {
+	virtual Node* cloneShallow(TypeSubs& typeSubs) const {
 		return NULL;
 	}
 	
-	Node* cloneTree() const {
-        Node* n = cloneShallow();
-		if (!n) {
-			std::string name = typeid(*this).name();
-			SourceLocation auxloc(*this);
-			yyerrorcpp(string_format("You need to implement cloneShallow using Cloneable<> in the node type %s.", name.c_str()), &auxloc, true);
-			assert(n);
-		}
-        n->node_children.reserve(node_children.size());
-        for (Node* c : node_children)
-            n->node_children.push_back(c->cloneTree());
-        return n;
-    }
+	Node* cloneTree(TypeSubs& typeSubs) const;
 
 	friend class UserType;
 	friend class Program;
@@ -129,8 +119,8 @@ public:
 template<typename Derived, typename Base = Node>
 struct Cloneable : Base {
 	using Base::Base;
-    Base* cloneShallow() const override {
-        return new Derived(static_cast<const Derived&>(*this));
+    Base* cloneShallow(map<string, DataType>& typeSubs) const override {
+        return new Derived(static_cast<const Derived&>(*this), typeSubs);
     }
 };
 

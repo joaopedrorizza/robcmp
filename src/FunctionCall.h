@@ -6,19 +6,22 @@
 #include "Identifier.h"
 #include "Variable.h"
 
-class FunctionCall: public Node {
+class FunctionCall: public Cloneable<FunctionCall> {
 private:
 	Identifier ident;
 	Node *symbol = NULL;
 	Variable *leftValue = NULL;
 
 public:
-	FunctionCall(const string& name, ParamsCall *pc, location_t loc): Node(loc), ident(name, loc) {
+	FunctionCall(const string& name, ParamsCall *pc, location_t loc): Cloneable<FunctionCall>(loc), ident(name, loc) {
 		node_children.reserve(pc->getNumParams());
 		node_children.insert(end(node_children), pc->getParameters().begin(),
 			pc->getParameters().end());
 		delete pc;
 	}
+
+	FunctionCall(const FunctionCall& f, TypeSubs& t) : Cloneable<FunctionCall>(f.getLoc()), 
+		ident(f.ident) {}
 	
 	virtual Value *generate(FunctionImpl *func, BasicBlock *block, BasicBlock *allocblock) override;
 

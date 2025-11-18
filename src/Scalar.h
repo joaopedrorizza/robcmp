@@ -13,6 +13,8 @@ public:
 
 	Scalar(Identifier ident, Node *e);
 
+	Scalar(const Scalar& s, TypeSubs& ts) : Cloneable<Scalar, Variable>(s, ts) {}
+
 	virtual Node *getExpr() override {
 		return node_children[0];
 	}

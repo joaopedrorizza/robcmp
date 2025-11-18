@@ -10,7 +10,7 @@ private:
 public:
 	Int32(int n, location_t loc): Cloneable<Int32>(loc), number(n) {}
 	
-	Int32(const Int32& n): Cloneable<Int32>(n.getLoc()), number(n.number) {}
+	Int32(const Int32& n, TypeSubs& ts): Cloneable<Int32>(n.getLoc()), number(n.number) {}
 	
 	int getNumber() const { return number; }
 

@@ -10,7 +10,7 @@ private:
 public:
 	Int16(short n, location_t loc): Cloneable<Int16>(loc), number(n) {}
 	
-	Int16(const Int16& n): Cloneable<Int16>(n.getLoc()), number(n.number) {}
+	Int16(const Int16& n, TypeSubs& ts): Cloneable<Int16>(n.getLoc()), number(n.number) {}
 
 	short getNumber() const { return number; }
 	

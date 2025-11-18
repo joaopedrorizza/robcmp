@@ -17,7 +17,7 @@ public:
 		identSymbol = n;
 	}
 
-	Load(const Load& o) : Cloneable<Load>(o), ident(o.ident) {}
+	Load(const Load& o, TypeSubs& ts) : Cloneable<Load>(o), ident(o.ident) {}
  
 	virtual Value *generate(FunctionImpl *func, BasicBlock *block, BasicBlock *allocblock) override;
 
