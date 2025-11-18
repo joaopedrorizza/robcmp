@@ -1,0 +1,17 @@
+
+template<typename T>
+T abs(T value) inline {
+    mask = value >> sizeof(T);
+    value = (value ^ mask) - mask;
+    return value;
+}
+
+int8 main() {
+
+    if abs#int8(-10) != 10 { return 1; }
+    if abs#int16(-10) != 10 { return 1; }
+    if abs#int32(-10) != 10 { return 1; }
+    if abs#int64(-10) != 10 { return 1; }
+
+    return 0;
+}

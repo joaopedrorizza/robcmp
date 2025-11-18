@@ -4,15 +4,17 @@
 #include "Node.h"
 #include "semantic/Visitor.h"
 
-class Return: public Node {
+class Return: public Cloneable<Return> {
 public:
-	Return(location_t loc): Node(loc) {
+	Return(location_t loc): Cloneable<Return>(loc) {
 		dt = tvoid;
 	}
 
-	Return(Node *n): Node(n->getLoc()) {
+	Return(Node *n): Cloneable<Return>(n->getLoc()) {
 		addChild(n);
 	}
+
+	Return(const Return& r) : Cloneable<Return>(r) {}
 
 	Node *value() {
 		if (node_children.empty())

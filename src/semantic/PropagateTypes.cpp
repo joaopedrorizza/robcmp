@@ -7,32 +7,19 @@
 #include "Program.h"
 #include <typeinfo>
 
-// void PropagateTypes::propagateChildren(Node& n, std::function<void(Node&)> lambda) {
-//     for (auto it = n.node_children.begin(); it != n.node_children.end(); ++it) {
-//         Node *replace = (*it)->accept(*this);
-//         if (replace) {
-//             *it = replace;
-//         }
-//         if (lambda)
-//             lambda(**it);
-//     }
-// }
-
 void PropagateTypes::propagateChildren(Node& n, std::function<void(Node&)> lambda) {
-    for (auto it = n.node_children.begin(); it != n.node_children.end(); ++it) {
-        Node *oldChild = *it;
-        Node *repl = oldChild->accept(*this);
-        if (repl && repl != oldChild) {
-            // Se o nó substituto não tem scope, herda do pai imediato (n)
-            if (!repl->getScope()) {
-                repl->setScope(&n); // pai na AST
-            }
-            *it = repl;
-
-            // Re-visita o nó novo (agora com scope garantido)
-            repl->accept(*this);
+    int i = 0;
+    vector<Node*> children_copy = n.node_children;
+    for (auto it = children_copy.begin(); it != children_copy.end(); ++it) {
+        if (!(*it))
+            assert("error");
+        Node *replace = (*it)->accept(*this);
+        if (replace) {
+            n.node_children[i] = replace;
         }
-        if (lambda) lambda(**it);
+        if (lambda)
+            lambda(**it);
+        i++;
     }
 }
 
@@ -304,41 +291,21 @@ Node* PropagateTypes::visit(CmpOp& n) {
 }
 
 Node* PropagateTypes::visit(FunctionImpl& n) {
-
-
-
-    // Salva contexto anterior
-  
     currentFunctionDt = n.getDataType();
     propagateChildren(n);
     currentFunctionDt = BuildTypes::undefinedType;
-
- 
-    for (auto *t : n.node_children) {
-        if (!t)
-            continue;
-
-        // Pega o nome da classe (tipo dinâmico do nó)
-        const char *className = typeid(*t).name(); // precisa de <typeinfo>
-
-        std::cerr << "Filho: " << t->getName()
-                  << " | Tipo do nó: " << className
-                  << " | DataType: " << buildTypes->name(t->getDataType())
-                  << " | findSymbol: " << t->findSymbol(t->getName())
-                  << std::endl;
-    }
-
     return NULL;
 }
 
 Node* PropagateTypes::visit(TemplateImpl& n) {
-
     return NULL;
 }
 
  Node* PropagateTypes::visit(TemplateCall& n){
+    return NULL;
+    /*
 
-   ParamsCall *newParams = new ParamsCall();
+    ParamsCall *newParams = new ParamsCall();
     for (Node *param : n.getParameters())
     {
         newParams->append(param);
@@ -403,36 +370,19 @@ Node* PropagateTypes::visit(TemplateImpl& n) {
     call->setDataType(instNode->getDataType());
 
     return call;
+    */
 }
 
 
 Node* PropagateTypes::visit(Return& n) {
-    if (!n.value()) {
+    if (!n.value()){
         n.dt = tvoid;
-
-        // 🔧 Proteção: evita chamar buildTypes->name() com tipo indefinido
-        if (currentFunctionDt != tvoid) {
-            if (currentFunctionDt == BuildTypes::undefinedType) {
-                yywarncpp("Return type is undefined; skipping type check for now.", &n);
-            } else {
-                yyerrorcpp(string_format("Return must be %s.",
-                                         buildTypes->name(currentFunctionDt)), &n);
-            }
-        }
-
+        if (currentFunctionDt != tvoid)
+            yyerrorcpp(string_format("Return must be %s.", buildTypes->name(currentFunctionDt)), &n);
         return NULL;
     } else {
         propagateChildren(n);
         DataType valueDt = n.value()->getDataType();
-
-        // 🔧 Proteção: se ainda indefinido, não tente comparar/coagir
-        if (currentFunctionDt == BuildTypes::undefinedType ||
-            valueDt == BuildTypes::undefinedType) {
-            yywarncpp("Return type not yet defined during propagation; skipping check.", &n);
-            n.dt = valueDt;
-            return NULL;
-        }
-
         if (currentFunctionDt != valueDt) {
             Node *converted = coerceTo(n.node_children[0], currentFunctionDt);
             if (converted) {
@@ -451,22 +401,6 @@ Node* PropagateTypes::visit(Return& n) {
 }
 
 Node* PropagateTypes::visit(FunctionCall& fc) {
-
-    Node* sc = fc.getScope();
-if (!sc) {
-    yywarncpp(std::string("[PT] FunctionCall '") + fc.getName() +
-              "' sem escopo no momento da visita; atribuindo escopo do programa.", &fc);
-    
-              if (program) {
-        fc.setScope(program);
-        sc = program;
-    } else {
-        // se realmente não há program, não dá pra continuar:
-        return &fc;
-    }
-}
-
-
     propagateChildren(fc);
     
     // if the function name is the name of a primitive or complex type,
@@ -519,10 +453,6 @@ if (!sc) {
             calledFuncParam++;
             passedParam++;
         }
-    }
-
-for(auto *t : fc.children()) {
-       std::cerr << "Escopo da chamada de função: " << t->getScope()->getName() << " Type: " << buildTypes->name(t->getDataType()) << "\n";
     }
 
     return NULL;

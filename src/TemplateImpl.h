@@ -38,7 +38,7 @@ public:
 
     Value *generate(FunctionImpl *, BasicBlock *, BasicBlock *allocblock) override;
 
-    FunctionImpl *generateFor(const vector<string> &concreteTypes);
+    FunctionImpl *generateFor(const vector<string> &concreteTypes, SourceLocation& loc);
 
     string mangleName(string baseName, string returnType_, vector<string> &params);
 

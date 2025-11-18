@@ -3,12 +3,14 @@
 
 #include "Node.h"
 
-class Int32: public Node {
+class Int32: public Cloneable<Int32> {
 private:
 	int number;
 	
 public:
-	Int32(int n, location_t loc): Node(loc), number(n) {}
+	Int32(int n, location_t loc): Cloneable<Int32>(loc), number(n) {}
+	
+	Int32(const Int32& n): Cloneable<Int32>(n.getLoc()), number(n.number) {}
 	
 	int getNumber() const { return number; }
 

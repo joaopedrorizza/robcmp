@@ -1,23 +1,14 @@
-//teste 1
+
 template <typename T>
 T swap(T x) {
-//return 10;
-return x;
-
+    return 100;
 }
-
-
-//teste 2
-// template <typename T>
-// T swap(T x) {
-// return 10;
-// }
-
 
 int16 main() {
 
-    if swap#int8(5) == 10 {
+    if swap#int8(5) == 100 {
         return 0;
     }
+
     return 1;
 }

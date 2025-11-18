@@ -8,6 +8,7 @@
 #include "Scalar.h"
 #include "TemplateParamNode.h"
 #include "semantic/PropagateTypes.h"
+#include "semantic/SymbolizeTree.h"
 #include "semantic/Visitor.h"
 #include <memory>
 #include <sstream>
@@ -208,7 +209,7 @@ static Node* cloneExprWithSubs(Node* e,
 }
 
 
-FunctionImpl *TemplateImpl::generateFor(const vector<string> &concreteTypes)
+FunctionImpl *TemplateImpl::generateFor(const vector<string> &concreteTypes, SourceLocation& loc)
 {
 
     FunctionImpl *newFunc;
@@ -216,7 +217,7 @@ FunctionImpl *TemplateImpl::generateFor(const vector<string> &concreteTypes)
     // 1) validação
     if (params.size() != concreteTypes.size())
     {
-        yyerrorcpp("Template instantiation failed: mismatched params", this);
+        yyerrorcpp("Template instantiation failed: mismatched params", &loc);
         return nullptr;
     }
 
@@ -242,16 +243,12 @@ FunctionImpl *TemplateImpl::generateFor(const vector<string> &concreteTypes)
 
     // 3) determinar tipo de retorno concreto (se o retorno for T, substitui)
     DataType newRt;
-    
-        auto resp = substitutionMap.find(returnType);
-        if (resp == substitutionMap.end())
-        {
-            newRt = buildTypes->getType(returnType);
-        }
-        else
-        {
-            newRt = resp->second;
-        }
+    auto resp = substitutionMap.find(returnType);
+    if (resp == substitutionMap.end()) {
+        newRt = buildTypes->getType(returnType);
+    } else {
+        newRt = resp->second;
+    }
 
     // 4) gerar nome mangleado (string que identifica a instância)
     vector<string> paramsForMangle = concreteTypes;
@@ -259,150 +256,37 @@ FunctionImpl *TemplateImpl::generateFor(const vector<string> &concreteTypes)
 
     //FunctionParams *newFp = new FunctionParams();
     if (Node *exists = program->findSymbol(instantiatedName)) {
-        auto finded = dynamic_cast<FunctionImpl*>(exists);
-        return finded; // já instanciado → reuse
-        }
-
-// Cria um novo conjunto de parâmetros para a instância
-FunctionParams *newParams = new FunctionParams();
-
-for (Variable *var : parameters->getParameters()) {
-    // Descobre o tipo concreto
-
-    Variable *newVar = new Variable(*var);
-
-    auto it = substitutionMap.find(var->getDataTypeName());
-    if (it != substitutionMap.end())
-    newVar->setDataType(it->second);       
-newParams->append(newVar);
-
-}
-
-vector<Node*> newBody;
-
-for (Node *origChild : this->node_children)
-{
-    if(auto *t = dynamic_cast<Return*>(origChild)){
-        Node *newNode = (origChild->getLoc());
-        Return *ret = new Return(origChild->getLoc());
-        newBody.push_back(ret);
+        auto found = dynamic_cast<FunctionImpl*>(exists);
+        return found; // já instanciado → reuse
     }
 
-    
- /*if (!origChild) continue;
+    // Cria um novo conjunto de parâmetros para a instância
+    FunctionParams *newParams = new FunctionParams();
 
-    // --- Caso: Scalar (declaração com inicialização)
-    if (auto *origScalar = dynamic_cast<Scalar*>(origChild))
-    {
-        std::cerr << "[DEBUG] Expandindo Scalar: " << origScalar->getName() << "\n";
-
-        Node* exprClone = cloneExprWithSubs(origScalar->getExpr(), substitutionMap, newFunc);
-
-        if (!exprClone) {
-    yyerrorcpp("Erro interno: Scalar '" + origScalar->getName() +
-               "' não pôde ter sua expressão clonada ao instanciar template '" +
-               this->getName() + "'", this);
-    continue; // NÃO criar o Scalar!
-}
-
-        Scalar* newScalar = new Scalar(origScalar->getName(), exprClone);
-        newScalar->setScope(nullptr,true);
-
-        // Tipo do Scalar (T -> concreto)
-        auto it = substitutionMap.find(origScalar->getDataTypeName());
-        if (it != substitutionMap.end()) newScalar->setDataType(it->second);
-        else newScalar->setDataType(origScalar->getDataType());
-
-        newScalar->setUsed(false);
-
-        newBody.push_back(newScalar);
-        continue;
-    }
-
-    // --- Caso: Return
-    if (auto *origRet = dynamic_cast<Return*>(origChild))
-    {
-        std::cerr << "[DEBUG] Expandindo Return em " << instantiatedName << "\n";
-
-        Node* exprClone = cloneExprWithSubs(origRet->value(), substitutionMap, newFunc);
-
-        Return* newRet = exprClone ? new Return(exprClone)
-                                   : new Return(origRet->getLoc());
-        //newRet->setScope(newFunc);
-
-        if (exprClone) {
-            auto it = substitutionMap.find(buildTypes->name(exprClone->getDataType()));
-            if (it != substitutionMap.end()) { exprClone->setDataType(it->second); newRet->setDataType(it->second); }
-            else newRet->setDataType(exprClone->getDataType());
-        } else {
-            newRet->setDataType(tvoid);
-        }
-
-        newBody.push_back(newRet);
-        continue;
-    }
-
-    // --- Caso: Variable simples
-    if (auto* var = dynamic_cast<Variable*>(origChild))
-    {
-        std::cerr << "[DEBUG] Expandindo Variable: " << var->getName() << "\n";
-
-        Variable* newVar = new Variable(var->getName(), var->getDataType(), var->getLoc());
-        newVar->setScope(nullptr,true);
-
+    for (Variable *var : parameters->getParameters()) {
+        // Descobre o tipo concreto
         auto it = substitutionMap.find(var->getDataTypeName());
-        if (it != substitutionMap.end()) newVar->setDataType(it->second);
-
-        newBody.push_back(newVar);
-        continue;
-    }
-
-    // --- Caso: Return já foi tratado; FunctionCall concreto (se aparecer no corpo)
-    if (auto* fc = dynamic_cast<FunctionCall*>(origChild))
-    {
-        // Recria com params clonados
-        ParamsCall* clonedParams = new ParamsCall();
-        for (auto* p : fc->getParameters()) {
-            Node* pc = cloneExprWithSubs(p, substitutionMap, newFunc);
-            if (!pc) pc = p;
-            clonedParams->append(pc);
+        if (it != substitutionMap.end()) {
+            Variable *newVar = new Variable(var->getName(), it->second, var->getLoc());
+            newParams->append(newVar);
         }
-        auto* nfc = new FunctionCall(fc->getName(), clonedParams, fc->getLoc());
-        nfc->setScope(nullptr,true);
-        nfc->setDataType(fc->getDataType());
-        auto it = substitutionMap.find(buildTypes->name(nfc->getDataType()));
-        if (it != substitutionMap.end()) nfc->setDataType(it->second);
-        newBody.push_back(nfc);
-        continue;
     }
 
-    // --- Caso: nó não suportado ainda → reusa ponteiro com escopo ajustado (fallback seguro)
-    {
-        std::cerr << "[WARN] Nó não expandido: " << typeid(*origChild).name()
-                  << " — reutilizando nó original com escopo atualizado.\n";
-        origChild->setScope(nullptr, true);
-        newBody.push_back(origChild);
+    vector<Node*> newBody;
+    for(Node *children : this->node_children) {
+        newBody.push_back(children->cloneTree());
     }
-}*/
-
-
-}
 
     // 8) Construir a nova FunctionImpl (obs.: verifique assinatura do seu constructor)
-    location_t loc = this->sloc;
-    location_t ef = this->sloc;
-
-     newFunc = new FunctionImpl(newRt, instantiatedName, newParams, std::move(newBody), loc, ef, this->constructor);
-
-     newFunc->setScope(program);
-    program->addChild(newFunc);
-    program->addSymbol(newFunc);
+    newFunc = new FunctionImpl(newRt, instantiatedName, newParams, std::move(newBody), this->getLoc(), this->getLoc(), this->constructor);
+    SymbolizeTree st;
+    newFunc->accept(st);
 
     return newFunc;
 }
 
 Value *TemplateImpl::generate(FunctionImpl *func, BasicBlock *block, BasicBlock *allocblock)
 {
-    yywarncpp("Attempt to generate code for a template definition '" + this->getName() + "'. Skipping.", this);
+    // Templates aren't generated.
     return nullptr;
 }

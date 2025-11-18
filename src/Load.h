@@ -4,18 +4,20 @@
 #include "Identifier.h"
 #include "semantic/Visitor.h"
 
-class Load: public Node {
+class Load: public Cloneable<Load> {
 private:
 	Identifier ident;
 	Variable *leftValue = NULL;
 	Node *identSymbol = NULL;
 	
 public:
-	Load(const char* i, location_t loc): Node(loc), ident(i, loc) {	}
-	Load(Identifier i): Node(i.getLoc()), ident(i.getFullName(), i.getLoc()) { }
-	Load(Node *n): Node(n->getLoc()), ident(n->getName(), n->getLoc()) {
+	Load(const char* i, location_t loc): Cloneable<Load>(loc), ident(i, loc) {	}
+	Load(Identifier i): Cloneable<Load>(i.getLoc()), ident(i.getFullName(), i.getLoc()) { }
+	Load(Node *n): Cloneable<Load>(n->getLoc()), ident(n->getName(), n->getLoc()) {
 		identSymbol = n;
 	}
+
+	Load(const Load& o) : Cloneable<Load>(o), ident(o.ident) {}
  
 	virtual Value *generate(FunctionImpl *func, BasicBlock *block, BasicBlock *allocblock) override;
 

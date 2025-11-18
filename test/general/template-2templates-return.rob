@@ -1,0 +1,23 @@
+
+template <typename T>
+T swap(T x) {
+    return 100;
+}
+
+template <typename T>
+T swap16(T x) {
+    return 1000;
+}
+
+int16 main() {
+
+    if swap#int8(5) == 10 {
+        return 0;
+    }
+
+    if swap16#int16(5) == 1000 {
+        return 0;
+    }
+
+    return 1;
+}

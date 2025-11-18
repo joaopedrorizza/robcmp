@@ -4,7 +4,7 @@
 #include "Variable.h"
 #include "semantic/Visitor.h"
 
-class Scalar: public Variable {
+class Scalar: public Cloneable<Scalar, Variable> {
 private:
 	bool used = false;
 

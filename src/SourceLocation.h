@@ -41,7 +41,7 @@ public:
 		sloc = s->sloc;
 	}
 
-	virtual location_t getLoc() {
+	virtual location_t getLoc() const {
 		return sloc;
 	}
 

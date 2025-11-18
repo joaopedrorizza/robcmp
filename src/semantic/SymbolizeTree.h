@@ -28,6 +28,13 @@ public:
         return NULL;
     }
 
+    virtual Node* visit(FunctionImpl& n) override {
+        for(auto arg : n.getParameters().getParameters()) {
+            n.addSymbol(arg);
+        }
+        return visit((Node&)n);
+    }
+
     virtual Node* visit(Array& n) override {
         for(auto* c : n.children()) {
             if (c->hasName()) {

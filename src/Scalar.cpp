@@ -7,11 +7,11 @@
 #include "Load.h"
 
 Scalar::Scalar(Identifier ident, Node *e) :
-	Variable(ident.getFullName(), ident.getLoc()) {
+	Cloneable<Scalar, Variable>(ident.getFullName(), ident.getLoc()) {
 	addChild(e);
 }
 
-Scalar::Scalar(const string& ident, Node *e): Variable(ident, e->getLoc()) {
+Scalar::Scalar(const string& ident, Node *e): Cloneable<Scalar, Variable>(ident, e->getLoc()) {
 	addChild(e);
 }
 

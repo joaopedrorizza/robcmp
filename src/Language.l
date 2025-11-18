@@ -77,6 +77,10 @@ EXP ([Ee][-+]?[0-9]+)?
 
 "<<"					{ return TOK_LSHIFT; }
 ">>"					{ return TOK_RSHIFT; }
+"=="					{ return EQ_OP; }
+"!="					{ return NE_OP; }
+"<="					{ return LE_OP; }
+">="					{ return GE_OP; }
 
 "!"						{ return '!'; }
 "<"						{ return '<'; }

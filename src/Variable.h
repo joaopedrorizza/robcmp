@@ -6,7 +6,7 @@
 
 enum PointerMode {pm_unknown, pm_pointer, pm_nopointer};
 
-class Variable: public NamedNode {
+class Variable: public Cloneable<Variable, NamedNode> {
 protected:
     Value *alloc = NULL;
     Identifier ident;
@@ -16,15 +16,17 @@ protected:
 	string dts;
 
 public:
-    Variable(const string &name, location_t loc): NamedNode(name, loc), ident(name, loc) {}
+    Variable(const string &name, location_t loc): Cloneable<Variable, NamedNode>(name, loc), ident(name, loc) {}
 	
-	Variable(const string &name, DataType dt, location_t loc): NamedNode(name, loc), ident(name, loc) {
+	Variable(const string &name, DataType dt, location_t loc): Cloneable<Variable, NamedNode>(name, loc), ident(name, loc) {
 		this->dt = dt;
 	}
 
-	Variable(const string &name, string dts, location_t loc): NamedNode(name, loc), ident(name, loc) {
+	Variable(const string &name, string dts, location_t loc): Cloneable<Variable, NamedNode>(name, loc), ident(name, loc) {
 		this->dts = dts;
 	}
+
+	Variable(const Variable& v) : Cloneable<Variable, NamedNode>(v), ident(v.ident), dts(v.dts) {}
 
     virtual Value* getLLVMValue(Node *stem, FunctionImpl *gfunc = NULL) override;
 	

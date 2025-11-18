@@ -4,12 +4,14 @@
 #include "Node.h"
 #include "semantic/Visitor.h"
 
-class BinaryOp: public Node {
+class BinaryOp: public Cloneable<BinaryOp> {
 private:
 	int op;
 
 public:
 	BinaryOp(Node *l, int op, Node *r);
+
+	BinaryOp(const BinaryOp& b) : Cloneable<BinaryOp>(b), op(b.op) {}
 
 	Value *logical_operator(enum Instruction::BinaryOps op, 
 		FunctionImpl *func, BasicBlock *block, BasicBlock *allocblock);

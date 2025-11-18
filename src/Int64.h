@@ -3,13 +3,15 @@
 
 #include "Node.h"
 
-class Int64: public Node {
+class Int64: public Cloneable<Int64> {
 private:
 	int64_t number;
 
 public:
-	Int64(int64_t n, location_t loc): Node(loc), number(n) {}
+	Int64(int64_t n, location_t loc): Cloneable<Int64>(loc), number(n) {}
 	
+	Int64(const Int64& n): Cloneable<Int64>(n.getLoc()), number(n.number) {}
+
 	int64_t getNumber() const { return number; }
 	
 	virtual Value *generate(FunctionImpl *func, BasicBlock *block, BasicBlock *allocblock) override;

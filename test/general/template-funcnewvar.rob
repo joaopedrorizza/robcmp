@@ -2,22 +2,34 @@
 template <typename T>
 T swap(T x) {
     a = x;
-return a;
+    return a;
 }
 
 template <typename T>
-T swap2(T a, T b, T c) {
+T sum(T a, T b, T c) {
     x = a + b + c;
-return x;
+    return x;
 }
 
-
-
+template <typename T, typename U>
+U sum2(T a, T b, U c) {
+    x = a + b + c;
+    return x;
+}
 
 int16 main() {
 
     if swap#int8(5) == 10 {
         return 0;
     }
+
+    if sum#int8(10, 10, 10) == 30 {
+        return 0;
+    }
+
+    if sum2#int8,int16(10, 10, 10) == 30 {
+        return 0;
+    }
+
     return 1;
 }

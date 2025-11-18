@@ -4,7 +4,7 @@
 #include "BinaryOp.h"
 #include "FunctionImpl.h"
 
-BinaryOp::BinaryOp(Node *l, int op, Node *r) : Node(l->getLoc()) {
+BinaryOp::BinaryOp(Node *l, int op, Node *r) : Cloneable<BinaryOp>(l->getLoc()) {
 	this->op = op;
 	this->addChild(l);
 	this->addChild(r);

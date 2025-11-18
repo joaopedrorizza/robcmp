@@ -23,6 +23,11 @@ public:
 	Node(location_t l) : SourceLocation(l) {}
 	Node(vector<Node*> &&children, location_t l);
 
+	Node(const Node& o) :
+		SourceLocation(o.getLoc()),
+		qualifiers(o.qualifiers),
+		pointerToPointer(o.pointerToPointer) {}
+
 	virtual ~Node();
 
 	virtual bool isConstExpr() {
@@ -95,12 +100,38 @@ public:
 		pointerToPointer = v;
 	}
 
+	virtual Node* cloneShallow() const {
+		return NULL;
+	}
+	
+	Node* cloneTree() const {
+        Node* n = cloneShallow();
+		if (!n) {
+			std::string name = typeid(*this).name();
+			SourceLocation auxloc(*this);
+			yyerrorcpp(string_format("You need to implement cloneShallow using Cloneable<> in the node type %s.", name.c_str()), &auxloc, true);
+			assert(n);
+		}
+        n->node_children.reserve(node_children.size());
+        for (Node* c : node_children)
+            n->node_children.push_back(c->cloneTree());
+        return n;
+    }
+
 	friend class UserType;
 	friend class Program;
 	friend class MemCopy;
 	friend class PropagateTypes;
 	friend class IdentifyVirtualDispatch;
-	// friend class ExpandTemplates;
+	friend class ExpandTemplates;
+};
+
+template<typename Derived, typename Base = Node>
+struct Cloneable : Base {
+	using Base::Base;
+    Base* cloneShallow() const override {
+        return new Derived(static_cast<const Derived&>(*this));
+    }
 };
 
 class NamedNode: public Node {
@@ -112,6 +143,8 @@ public:
 
 	NamedNode(const string &name, vector<Node*> &&children, location_t loc) :
 		Node(std::move(children), loc), name(name) {}
+
+	NamedNode(const NamedNode& n) : Node(n), name(n.name) {}
 
 	virtual const string getName() const override {
 		return name;

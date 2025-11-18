@@ -1,7 +1,7 @@
-ALL=$(patsubst %.rob,out/%,$(wildcard *.rob))
-ALL_LL=$(patsubst %.rob,out/%.ll,$(wildcard *.rob))
-ALL_TT=$(patsubst %.rob,%.tt,$(wildcard *.rob))
-ALL_OO=$(patsubst %.rob,out/%.o,$(wildcard *.rob))
+ALL=$(patsubst %.rob,out/%,$(wildcard *${FILTER}*.rob))
+ALL_LL=$(patsubst %.rob,out/%.ll,$(wildcard *${FILTER}*.rob))
+ALL_TT=$(patsubst %.rob,%.tt,$(wildcard *${FILTER}*.rob))
+ALL_OO=$(patsubst %.rob,out/%.o,$(wildcard *${FILTER}*.rob))
 
 OS=$(shell uname -o)
 

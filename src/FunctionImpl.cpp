@@ -7,11 +7,6 @@ FunctionImpl::FunctionImpl(DataType dt, string name, FunctionParams *fp, vector<
 	FunctionBase(dt, name, fp, std::move(stmts), loc, constructor), endfunction(ef) {
 	this->declaration = false;
 	funit = RobDbgInfo.currFile();
-
-	for(auto p: fp->getParameters()) {
-		symbols[p->getName()] = p;
-		p->setScope(this);
-	}
 }
 
 bool FunctionImpl::preGenerate() {
