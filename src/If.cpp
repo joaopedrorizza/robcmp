@@ -3,16 +3,43 @@
 #include "FunctionImpl.h"
 #include "semantic/Visitor.h"
 
-If::If(Node *e, vector<Node*> &&tst, location_t loc): Node(loc), expr(e) {
-	addChild(expr);
-	thenst = new Node(std::move(tst), loc);
-	addChild(thenst);
-	elsest = NULL;
+// ---------------------------------------------------
+// Construtor sem else
+// ---------------------------------------------------
+If::If(Node *e, vector<Node*> &&tst, location_t loc)
+: Cloneable<If>(loc), expr(e)
+{
+    addChild(expr);
+
+    thenst = new Node(std::move(tst), loc);
+    addChild(thenst);
+
+    elsest = NULL; // sem else
 }
 
-If::If(Node *e, vector<Node*> &&tst, vector<Node*> &&est, location_t loc): If(e, std::move(tst), loc) {
-	elsest = new Node(std::move(est), loc);
-	addChild(elsest);
+// ---------------------------------------------------
+// Construtor com else
+// ---------------------------------------------------
+If::If(Node *e, vector<Node*> &&tst, vector<Node*> &&est, location_t loc)
+: If(e, std::move(tst), loc)
+{
+    elsest = new Node(std::move(est), loc);
+    addChild(elsest);
+}
+
+// ---------------------------------------------------
+// Construtor de clone (TypeSubs)
+// ---------------------------------------------------
+If::If(const If& other, TypeSubs& ts)
+: Cloneable<If>(other.getLoc()) // mantém posição
+{
+    expr = other.expr ? other.expr->cloneTree(ts) : nullptr;
+    thenst = other.thenst ? other.thenst->cloneTree(ts) : nullptr;
+    elsest = other.elsest ? other.elsest->cloneTree(ts) : nullptr;
+
+    addChild(expr);
+    addChild(thenst);
+    if (elsest) addChild(elsest);
 }
 
 Value *If::generate(FunctionImpl *func, BasicBlock *block, BasicBlock *allocblock) {

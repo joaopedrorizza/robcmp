@@ -1,0 +1,15 @@
+
+
+int8 teste(int8 a) {
+    x = 1;
+    a = x + 2;
+    b = a + 3;
+
+    return b;
+}
+
+int16 main() {
+
+    teste(3);
+    return 0;
+}

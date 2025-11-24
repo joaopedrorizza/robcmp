@@ -1,0 +1,90 @@
+// 1. abs - valor absoluto (com condicional ternário)
+template <typename T>
+T abs(T x) {
+   
+    if(x < 0){
+        return -x;}
+    else {
+        return x;
+    }
+}
+
+// 2. max - máximo entre dois valores
+template <typename T>
+T max(T a, T b) {
+    
+    if(a > b){
+        return a;}
+    else {
+        return b;}
+    
+}
+
+// 3. min - mínimo entre dois valores
+template <typename T>
+T min(T a, T b) {
+   if(a < b){
+    return a;}
+    else {
+    return b;}
+}
+
+// 4. swap - troca dois valores (usa referência)
+// template <typename T>
+// void swap(T& a, T& b) {
+//     T temp = a;
+//     a = b;
+//     b = temp;
+// }
+
+// 5. square - quadrado
+template <typename T>
+T square(T x) {
+    return x * x;
+}
+
+// 6. cube - cubo
+template <typename T>
+T cube(T x) {
+    return x * x * x;
+}
+
+// 7. sign - sinal do número (-1, 0, +1)
+// template <typename T>
+// int sign(T x) {
+
+//     return (x > T(0)) - (x < T(0));
+// }
+
+// 8. clamp - limita valor entre min e max
+template <typename T>
+T clamp(T value, T lower, T upper) {
+    if (value < lower)  {return lower;}
+    if (value > upper)  {return upper;}
+    return value;
+}
+
+// 9. gcd - máximo divisor comum (Euclides recursivo)
+//  template <typename T>
+//  T gcd(T a, T b) {
+
+//  }
+
+// 10. pow_n - potência inteira positiva (loop simples, sem recursão)
+// template <typename T>
+// T pow_n(T base, int16 exp) {
+//     T result = T(1);
+//     for (i = 0; i < exp; ++i) {
+//         result *= base;
+//     }
+//     return result;
+// }
+
+int16 main() {
+    
+    if(abs#float(-1.25) == 1.25){
+        return 0;
+    }
+
+return 1;
+}

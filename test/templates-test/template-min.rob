@@ -1,0 +1,18 @@
+
+// 3. min - mínimo entre dois valores
+template <typename T>
+T min(T a, T b) {
+   if(a < b){
+    return a;}
+    else {
+    return b;}
+}
+
+int16 main() {
+    
+    if(min#int8(10, 20) == 10){
+        return 0;
+    }
+
+return 1;
+}

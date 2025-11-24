@@ -1,0 +1,10 @@
+template<typename T>
+T recursivo(T value) inline {
+    recursivo(value);
+    return value;
+}
+
+int16 main() {
+    a = recursivo#int8(0);
+    return a; // should return 1234
+}

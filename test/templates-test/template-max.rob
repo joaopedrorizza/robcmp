@@ -1,0 +1,19 @@
+// 2. max - máximo entre dois valores
+template <typename T>
+T max(T a, T b) {
+    
+    if(a > b){
+        return a;}
+    else {
+        return b;}
+    
+}
+
+int16 main() {
+    
+    if(max#int8(1,5) == 5){
+        return 0;
+    }
+
+return 1;
+}

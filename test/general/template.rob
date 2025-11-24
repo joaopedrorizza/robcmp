@@ -4,6 +4,9 @@ void swap(T x) {
     return;
 }
 
+    swap#int8(11);
+
+
 
 int16 main() {
 

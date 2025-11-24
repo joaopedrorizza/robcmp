@@ -1,0 +1,15 @@
+// 5. square - quadrado
+template <typename T>
+T square(T x) {
+    return x * x;
+}
+
+
+int16 main() {
+    
+    if(square#int8(3) == 9){
+        return 0;
+    }
+
+return 1;
+}

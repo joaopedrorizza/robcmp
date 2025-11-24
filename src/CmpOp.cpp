@@ -3,11 +3,28 @@
 #include "FlexDependencies.h"
 #include "Language_gen_y.hpp"
 
-CmpOp::CmpOp (Node *l, int op, Node *r): Node(l->getLoc()) {
+CmpOp::CmpOp (Node *l, int op, Node *r): Cloneable<CmpOp>(l->getLoc()) {
 	this->op = op;
 	this->dt = tbool;
 	addChild(l);
 	addChild(r);
+}
+
+// --------------------------------------------------
+// Construtor de clone (TypeSubs)
+// --------------------------------------------------
+CmpOp::CmpOp(const CmpOp &other, TypeSubs &ts)
+: Cloneable<CmpOp>(other.getLoc()), left(nullptr), right(nullptr), op(other.op)
+{
+    // Clone dos filhos via clone(ts) — assegure que Node::clone(ts) existe
+    if (other.left)
+        left = other.left->cloneTree(ts);
+    if (other.right)
+        right = other.right->cloneTree(ts);
+
+    // registrar filhos no novo nó
+    if (left) addChild(left);
+    if (right) addChild(right);
 }
 
 Value *CmpOp::generate(FunctionImpl *func, BasicBlock *block, BasicBlock *allocblock) {

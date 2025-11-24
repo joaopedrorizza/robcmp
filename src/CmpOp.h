@@ -3,12 +3,17 @@
 #include "Node.h"
 #include "semantic/Visitor.h"
 
-class CmpOp: public Node {
+class CmpOp: public Cloneable<CmpOp> {
 private:
+	Node *left;
+	Node *right;
 	int op;
-	
+
 public:
 	CmpOp (Node *l, int op, Node *r);
+	 // Construtor de clone (obrigatório para Cloneable)
+    CmpOp(const CmpOp &other, TypeSubs &ts);
+
 	int getOperator() const { return op; };
 	virtual Value *generate(FunctionImpl *func, BasicBlock *block, BasicBlock *allocblock) override;
 	Node *lexpn() {

@@ -1,0 +1,17 @@
+// 8. clamp - limita valor entre min e max
+template <typename T>
+T clamp(T value, T lower, T upper) {
+    if (value < lower)  {return lower;}
+    if (value > upper)  {return upper;}
+    return value;
+}
+
+
+int16 main() {
+    
+    if(clamp#float(3, 1, 2) == 2){
+        return 0;
+    }
+
+return 1;
+}

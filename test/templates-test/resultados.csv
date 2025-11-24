@@ -1,0 +1,16 @@
+Arquivo,Tempo(s),Memoria(KB),Binario(Bytes)
+template-abs.rob,/usr/bin/time: cannot run robcmp: No such file or directory
+Command exited with non-zero status 127
+0.00,1024,
+template-clamp.rob,/usr/bin/time: cannot run robcmp: No such file or directory
+Command exited with non-zero status 127
+0.00,1024,
+template-max.rob,/usr/bin/time: cannot run robcmp: No such file or directory
+Command exited with non-zero status 127
+0.00,1024,
+template-min.rob,/usr/bin/time: cannot run robcmp: No such file or directory
+Command exited with non-zero status 127
+0.00,1024,
+template-square.rob,/usr/bin/time: cannot run robcmp: No such file or directory
+Command exited with non-zero status 127
+0.00,1024,

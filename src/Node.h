@@ -103,7 +103,8 @@ public:
 	}
 
 	virtual Node* cloneShallow(TypeSubs& typeSubs) const {
-		return NULL;
+		//return NULL;
+		return new Node(std::vector<Node*>(), this->getLoc());
 	}
 	
 	Node* cloneTree(TypeSubs& typeSubs) const;
@@ -119,7 +120,7 @@ public:
 template<typename Derived, typename Base = Node>
 struct Cloneable : Base {
 	using Base::Base;
-    Base* cloneShallow(map<string, DataType>& typeSubs) const override {
+    Base* cloneShallow(TypeSubs& typeSubs) const override {
         return new Derived(static_cast<const Derived&>(*this), typeSubs);
     }
 };
