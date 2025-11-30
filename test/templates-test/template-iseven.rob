@@ -1,0 +1,25 @@
+template<typename U>
+bool is_even(U x) {
+    if(x % 2 == 0) {
+        return true;
+    }
+    return false;
+}
+
+
+int16 main() {
+    if(is_even#int8(4) != true){
+        return 1;
+    }
+
+    if(is_even#int16(131) != false){
+        return 1;
+    }
+
+    if(is_even#int32(0) != true){
+        return 1;
+    }
+
+    return 0;
+
+}

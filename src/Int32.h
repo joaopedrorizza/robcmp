@@ -25,12 +25,13 @@ public:
 	}
 };
 
-class UInt32: public Node {
+class UInt32: public Cloneable<UInt32> {
 private:
 	unsigned int number;
 	
 public:
-	UInt32(unsigned int n, location_t loc): Node(loc), number(n) {}
+	UInt32(unsigned int n, location_t loc): Cloneable<UInt32>(loc), number(n) {}
+	UInt32(const UInt32& n, TypeSubs& ts): Cloneable<UInt32>(n.getLoc()), number(n.number) {}
 	
 	unsigned int getNumber() const { return number; }
 

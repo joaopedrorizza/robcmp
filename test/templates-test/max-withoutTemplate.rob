@@ -1,0 +1,45 @@
+// 2. max - máximo entre dois valores
+
+int8 max(int8 a, int8 b) {
+    
+    if(a > b){
+        return a;}
+    else {
+        return b;}
+    
+}
+
+int16 max1(int16 a, int16 b) {
+    
+    if(a > b){
+        return a;}
+    else {
+        return b;}
+    
+}
+
+float max2(float a, float b) {
+    
+    if(a > b){
+        return a;}
+    else {
+        return b;}
+    
+}
+
+int16 main() {
+    
+    if(max(1,5) == 5){
+        return 0;
+    }
+
+    if(max1(300,200) == 300){
+        return 0;
+    }
+
+    if(max2(2.5,3.5) == 3.5){
+        return 0;
+    }
+
+return 1;
+}

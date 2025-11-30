@@ -4,30 +4,26 @@
 #include "Identifier.h"
 #include "ParamsCall.h"
 #include "FunctionCall.h"
+#include "TemplateParams.h"
 #include "Variable.h"
 
 class TemplateCall : public Node
 {
 private:
 	Identifier ident;
-    std::vector<std::string> templateArgs_; 
-   Node *symbol = NULL;
+	TemplateParams *tpl_parameters;
+    Node *symbol = NULL;
 	Variable *leftValue = NULL;
 
 public:
-    TemplateCall(const string& name, std::vector<std::string> &&tplArgs, ParamsCall *pc, location_t loc): Node(loc), ident(name, loc) {
+    TemplateCall(const string& name, TemplateParams *tp, ParamsCall *pc, location_t loc): Node(loc), ident(name, loc) {
+		this->tpl_parameters = tp;
       
-    this->templateArgs_ = std::move(tplArgs);
-
     node_children.reserve(pc->getNumParams());
 	node_children.insert(end(node_children), pc->getParameters().begin(),
 	pc->getParameters().end());
 		delete pc;
     }
-
-
-    const std::vector<std::string> &getTemplateArgs() const { return templateArgs_; }
-    //const std::string instantiate(const string& baseName); // <-- lowering
 
     virtual Value *generate(FunctionImpl *func, BasicBlock *block, BasicBlock *allocblock) override;
 
@@ -39,6 +35,10 @@ public:
 
 	std::vector<Node *>& getParameters() {
 		return node_children;
+	}
+
+	TemplateParams* getTemplateParams() {
+		return tpl_parameters;
 	}
 
 	Node* accept(Visitor& v) override;

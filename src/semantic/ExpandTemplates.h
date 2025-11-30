@@ -51,7 +51,7 @@ public:
         assert(templImpl && "Template implementation not found.");
 
         // 2) instanciar
-        FunctionImpl *concreteFunc = templImpl->generateFor(n.getTemplateArgs(), n);
+        FunctionImpl *concreteFunc = templImpl->generateFor(n.getTemplateParams()->getTemplateParameters(), n);
         Node *templateScope = templImpl->getScope();
         if (!concreteFunc->getScope()) {
             concreteFunc->setScope(templateScope);

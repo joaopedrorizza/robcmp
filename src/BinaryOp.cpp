@@ -10,6 +10,24 @@ BinaryOp::BinaryOp(Node *l, int op, Node *r) : Cloneable<BinaryOp>(l->getLoc()) 
 	this->addChild(r);
 }
 
+BinaryOp::BinaryOp(const BinaryOp& other, TypeSubs& ts)
+    : Cloneable<BinaryOp>(other.getLoc()), op(other.op)
+{
+    // clone dos operandos
+    Node* lhs = nullptr;
+    Node* rhs = nullptr;
+
+    if (other.lhsn())
+        lhs = other.lhsn()->cloneTree(ts);
+
+    if (other.rhsn())
+        rhs = other.rhsn()->cloneTree(ts);
+
+    // registrar no novo nó
+    if (lhs) addChild(lhs);
+    if (rhs) addChild(rhs);
+}
+
 Value *BinaryOp::logical_operator(enum Instruction::BinaryOps op, 
 	FunctionImpl *func, BasicBlock *block, BasicBlock *allocblock) {
 	

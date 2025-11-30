@@ -52,6 +52,7 @@
 	ArrayElements *aes;
 	MatrixElements *mes;
 	FunctionParams *fps;
+	TemplateParams *tps;
 	FunctionAttributes *fattrs;
 	FunctionAttribute *fattr;
 	ParamsCall *pc;

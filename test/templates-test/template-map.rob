@@ -1,0 +1,17 @@
+// MAP: Mapeia valor de uma faixa para outra
+template<typename T, typename U>
+float map(T value, T in_min, T in_max, U out_min, U out_max) {
+    x =  out_min + (out_max - out_min) * ((value - in_min) / (in_max - in_min));
+    return x;
+}
+
+
+int16 main() {
+    
+    result1 = map#int8,float(5, 0, 10, 0.0, 1.0);
+    
+    if(result1 == 0.5){
+        return 1;
+    }   
+    return 0;
+}

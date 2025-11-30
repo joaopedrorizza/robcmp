@@ -5,6 +5,7 @@
 #include "BuildTypes.h"
 #include "Return.h"
 #include "Variable.h"
+#include "Array.h"
 #include "Scalar.h"
 #include "TemplateParamNode.h"
 #include "semantic/PropagateTypes.h"
@@ -158,12 +159,11 @@ static Node* cloneExprWithSubs(Node* e,
         return ns;
     }
 
-    // 3) Return (em expressão é raro; por segurança)
+   /* // 3) Return (em expressão é raro; por segurança)
     if (auto* r = dynamic_cast<Return*>(e)) {
-        Node* val = cloneExprWithSubs(r->value(), subMap, newScope);
-        Return* nr = val ? new Return(val) : new Return(r->getLoc());
-        nr->setScope(nullptr,true);
-        if (val) {
+                Node* val = cloneExprWithSubs(r->value(), subMap, newScope);
+
+          if (val) {
             if (auto it = subMap.find(buildTypes->name(val->getDataType())); it != subMap.end()) {
                 val->setDataType(it->second);
                 nr->setDataType(it->second);
@@ -173,8 +173,14 @@ static Node* cloneExprWithSubs(Node* e,
         } else {
             nr->setDataType(tvoid);
         }
+
+        //Return* nr = val ? new Return(val) : new Return(r->getLoc());
+
+        Return* nr = new Return(r->getLoc());   
+        nr->setScope(nullptr,true);
+ 
         return nr;
-    }
+    }*/
 
     // 4) FunctionCall
     if (auto* fc = dynamic_cast<FunctionCall*>(e)) {
@@ -209,7 +215,7 @@ static Node* cloneExprWithSubs(Node* e,
 }
 
 
-FunctionImpl *TemplateImpl::generateFor(const vector<string> &concreteTypes, SourceLocation& loc)
+FunctionImpl *TemplateImpl::generateFor(const vector<Variable*> &concreteTypes, SourceLocation& loc)
 {
 
     FunctionImpl *newFunc;
@@ -218,6 +224,7 @@ FunctionImpl *TemplateImpl::generateFor(const vector<string> &concreteTypes, Sou
     if (params.size() != concreteTypes.size())
     {
         yyerrorcpp("Template instantiation failed: mismatched params", &loc);
+        exit(1);
         return nullptr;
     }
 
@@ -228,18 +235,26 @@ FunctionImpl *TemplateImpl::generateFor(const vector<string> &concreteTypes, Sou
         TemplateParamNode *tpn = dynamic_cast<TemplateParamNode *>(params[i]);
         if (!tpn)
         {
-            yyerrorcpp("Template parameter node expected.", this);
+            yyerrorcpp("Template parameter expected.", this);
             return nullptr;
         }
         std::string paramName = tpn->getName();
-        DataType dt = buildTypes->getType(concreteTypes[i]);
+        //DataType dt = buildTypes->getType(concreteTypes[i]);
+        DataType dt = concreteTypes[i]->getDataType();
         if (dt == BuildTypes::undefinedType)
         {
-            yyerrorcpp("Unknown type '" + concreteTypes[i] + "' in template instantiation.", this);
+            yyerrorcpp("Unknown type '" + concreteTypes[i]->getName() + "' in template instantiation.", this);
             return nullptr;
         }
         substitutionMap[paramName] = dt;
     }
+
+    cout << "[DEBUG] substitutionMap:\n";
+for (auto &p : substitutionMap) {
+    cout << "   " << p.first << " -> " 
+         << buildTypes->name(p.second) << "\n";
+}
+
 
     // 3) determinar tipo de retorno concreto (se o retorno for T, substitui)
     DataType newRt;
@@ -251,10 +266,13 @@ FunctionImpl *TemplateImpl::generateFor(const vector<string> &concreteTypes, Sou
     }
 
     // 4) gerar nome mangleado (string que identifica a instância)
-    vector<string> paramsForMangle = concreteTypes;
+    vector<string> paramsForMangle;
+
+    for(Variable* var : concreteTypes) {
+        paramsForMangle.push_back(buildTypes->name(var->getDataType()));
+    }
     string instantiatedName = mangleName(this->getName(), buildTypes->name(newRt), paramsForMangle);
 
-    //FunctionParams *newFp = new FunctionParams();
     if (Node *exists = program->findSymbol(instantiatedName)) {
         auto found = dynamic_cast<FunctionImpl*>(exists);
         return found; // já instanciado → reuse
@@ -265,17 +283,51 @@ FunctionImpl *TemplateImpl::generateFor(const vector<string> &concreteTypes, Sou
 
     for (Variable *var : parameters->getParameters()) {
         // Descobre o tipo concreto
-        auto it = substitutionMap.find(var->getDataTypeName());
+        auto it = substitutionMap.find(buildTypes->name(var->getDataType()));
         if (it != substitutionMap.end()) {
-            Variable *newVar = new Variable(var->getName(), it->second, var->getLoc());
-            newParams->append(newVar);
+            if (Variable *v = dynamic_cast<Variable *>(var))
+            {
+                Variable *newParam = new Variable(var->getName(), it->second, var->getLoc());
+                std::cout << "Processed parameter: " << buildTypes->name(newParam->getDataType()) << " " << newParam->getName() << "\n";
+            newParams->append(newParam);
+            }
+
+            if (ParamArray *pr = dynamic_cast<ParamArray *>(var))
+            {
+                ParamArray *newParam = new ParamArray(var->getName(), it->second, var->getLoc());
+                std::cout << "Processed parameter: " << newParam->getDataTypeName() << " " << newParam->getName() << "\n";
+            newParams->append(newParam);
+            }
+
+            // if(ParamMatrix *pm = dynamic_cast<pm>(var)){
+            //     ParamMatrix *newPm = new ParamMatrix()
+            // }  // 2) Se for array/matriz de algo genérico, substitua o elemento
+    // if (buildTypes->isArrayOrMatrix(original))
+    // {
+    //     DataType inner = buildTypes->getArrayElementType(original);
+    //     DataType newInner = substituteType(inner, subMap);
+    //     if (newInner != inner && newInner != BuildTypes::undefinedType)
+    //     {
+    //         unsigned char dims = buildTypes->dimensions(original);
+    //         SourceLocation sloca = *(buildTypes->location(original));
+    //         // Obter o nome do tipo concreto do elemento
+    //         const char *innerName = buildTypes->name(newInner); // aqui newInner é concreto
+    //         return buildTypes->getArrayType(innerName, sloca, dims, false);
+    //     }
+    //     return original;
+    // }
+
+        } else {
+            Variable *newParam = new Variable(var->getName(), var->getDataType(), var->getLoc());
+            newParams->append(newParam);
         }
     }
 
-    vector<Node*> newBody;
-    for(Node *children : this->node_children) {
-        newBody.push_back(children->cloneTree(substitutionMap));
-    }
+vector<Node*> newBody;
+for (Node *child : this->node_children) {
+    Node* cloned = child->cloneTree(substitutionMap);
+    newBody.push_back(cloned);
+}
 
     // 8) Construir a nova FunctionImpl (obs.: verifique assinatura do seu constructor)
     newFunc = new FunctionImpl(newRt, instantiatedName, newParams, std::move(newBody), this->getLoc(), this->getLoc(), this->constructor);

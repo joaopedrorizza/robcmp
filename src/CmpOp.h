@@ -11,7 +11,6 @@ private:
 
 public:
 	CmpOp (Node *l, int op, Node *r);
-	 // Construtor de clone (obrigatório para Cloneable)
     CmpOp(const CmpOp &other, TypeSubs &ts);
 
 	int getOperator() const { return op; };

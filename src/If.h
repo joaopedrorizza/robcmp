@@ -10,7 +10,6 @@ private:
 public:
 	If(Node *e, vector<Node*> &&tst, location_t loc);
 	If(Node *e, vector<Node*> &&tst, vector<Node*> &&est, location_t loc);
-	 // Construtor de clone (obrigatório)
     If(const If& other, TypeSubs& ts);
 
 	virtual Value* generate(FunctionImpl *func, BasicBlock *block, BasicBlock *allocblock) override;

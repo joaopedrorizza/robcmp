@@ -30,6 +30,42 @@ public:
 		qualifiers(o.qualifiers),
 		pointerToPointer(o.pointerToPointer) {}
 
+	Node(const Node &o, TypeSubs &ts)
+		: SourceLocation(o.getLoc()),
+		  qualifiers(o.qualifiers),
+		  pointerToPointer(o.pointerToPointer)
+	{
+		// 1) aplicar substituição de tipos: só se o tipo original tiver nome e houver mapeamento
+		if (o.dt != BuildTypes::undefinedType)
+		{
+			// se o tipo original tem um "nome" associado (opcional)
+			std::string oname = buildTypes->name(o.dt); // só chamar se não indefinido
+			auto it = ts.find(oname);
+			if (it != ts.end())
+			{
+				dt = it->second;
+			}
+			else
+			{
+				dt = o.dt;
+			}
+		}
+		else
+		{
+			dt = BuildTypes::undefinedType;
+		}
+
+		// 2) clonar filhos (usando cloneTree que respeita ts)
+		for (Node *child : o.node_children)
+		{
+			if (child)
+			{
+				Node *cloned = child->cloneTree(ts);
+				this->addChild(cloned); // addChild cuida do registro do filho
+			}
+		}
+	}
+
 	virtual ~Node();
 
 	virtual bool isConstExpr() {
@@ -103,8 +139,7 @@ public:
 	}
 
 	virtual Node* cloneShallow(TypeSubs& typeSubs) const {
-		//return NULL;
-		return new Node(std::vector<Node*>(), this->getLoc());
+		return new Node(*this, typeSubs);
 	}
 	
 	Node* cloneTree(TypeSubs& typeSubs) const;

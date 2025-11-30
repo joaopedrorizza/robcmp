@@ -1,0 +1,20 @@
+// LERP: Interpolação linear
+template<typename T, typename U>
+U lerp(T a, T b, U t) {
+    x = a + t * (b - a);
+    return x;
+}
+
+
+int16 main() {
+    
+    result1 = lerp#int16,float(10, 20, 0.5);
+    result2 = lerp#float,float(1.5, 2.5, 0.2);
+    result3 = lerp#float,float(-5.0, 5.0, 0.75);
+
+    if(result1 == 15 and result2 == 1.7 and result3 == 2.5){
+        return 0;
+    }
+
+    return 1;
+}

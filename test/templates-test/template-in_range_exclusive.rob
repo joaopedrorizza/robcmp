@@ -1,0 +1,22 @@
+// IN_RANGE_EXCLUSIVE: Verifica se valor está no intervalo (low, high)
+template<typename T>
+bool in_range_exclusive(T value, T low, T high) {
+    if(low < value){
+        if(value < high){
+            return true;
+        }
+    }
+    return false;
+}
+
+int16 main() {
+
+    expected = false;
+
+    if(in_range_exclusive#int8(16, 1, 10) != expected){
+        return 1;
+    }
+    
+    
+    return 0;
+}

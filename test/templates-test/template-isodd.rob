@@ -1,0 +1,26 @@
+// IS_ODD: Verifica se é ímpar  
+template<typename T>
+bool is_odd(T x) {
+    if(x % 2 != 0){
+        return true;
+    }
+    return false;
+}
+
+
+int16 main() {
+    
+        if(is_odd#int8(3) == false){
+            return 1;
+        }
+    
+        if(is_odd#int16(258) == true){
+            return 1;
+        }
+
+        if(is_odd#int32(99999) == false){
+            return 1;
+        }
+    
+    return 0;
+}

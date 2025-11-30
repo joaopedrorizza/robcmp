@@ -2,14 +2,45 @@
 #include "While.h"
 #include "FunctionImpl.h"
 
-While::While(Node *e, location_t loc) : Node(loc), expr(e) {
-	addChild(e);
-	stmts = NULL;
+While::While(Node *e, location_t loc) : Cloneable<While>(loc), expr(e) {
+	addChild(expr);
 }
 
 While::While(Node *e, vector<Node*> &&ss, location_t loc) : While(e, loc) {
 	stmts = new Node(std::move(ss), loc);
 	addChild(stmts);
+}
+
+While::While(const While& other, TypeSubs& ts)
+    : Cloneable<While>(other, ts)   // IMPORTANTE!
+{
+    // -------- 1) Clonar expr --------
+    if (other.expr)
+        expr = other.expr->cloneTree(ts);
+    else
+        expr = nullptr;
+
+    if (expr)
+        addChild(expr);
+
+    // -------- 2) Clonar stmts (o bloco dentro do while) --------
+    if (other.stmts)
+    {
+        vector<Node*> newStmts;
+
+        for (Node* st : other.stmts->children())
+        {
+            Node* cloned = st->cloneTree(ts);
+            newStmts.push_back(cloned);
+        }
+
+        stmts = new Node(std::move(newStmts), other.getLoc());
+        addChild(stmts);
+    }
+    else
+    {
+        stmts = nullptr;
+    }
 }
 
 Value *While::generate(FunctionImpl *func, BasicBlock *block, BasicBlock *allocblock) {

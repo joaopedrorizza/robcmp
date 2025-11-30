@@ -118,19 +118,20 @@ Type* Node::getLLVMType() {
 		return taux;
 }
 
-Node* Node::cloneTree(TypeSubs& typeSubs) const {
-	Node* n = cloneShallow(typeSubs);
-	if (!n) {
-		std::string name = typeid(*this).name();
-		SourceLocation auxloc(*this);
-		yyerrorcpp(string_format("You need to implement cloneShallow using Cloneable<> in the node type %s.", name.c_str()), &auxloc, true);
-		assert(n);
+Node *Node::cloneTree(TypeSubs &typeSubs) const {
+		Node *n = cloneShallow(typeSubs);
+		if (!n) {
+			std::string name = typeid(*this).name();
+			SourceLocation auxloc(*this);
+			yyerrorcpp(string_format("You need to implement cloneShallow using Cloneable<> in the node type %s.", name.c_str()), &auxloc, true);
+			assert(n);
+		}
+		n->node_children.reserve(node_children.size());
+		for (Node *c : node_children)
+			n->node_children.push_back(c->cloneTree(typeSubs));
+		return n;
 	}
-	n->node_children.reserve(node_children.size());
-	for (Node* c : node_children)
-		n->node_children.push_back(c->cloneTree(typeSubs));
-	return n;
-}
+
 
 Node* getNodeForUIntConst(uint64_t i, location_t loc) {
 	if (i <= UCHAR_MAX)

@@ -11,7 +11,8 @@ private:
 public:
 	BinaryOp(Node *l, int op, Node *r);
 
-	BinaryOp(const BinaryOp& b, TypeSubs& ts) : Cloneable<BinaryOp>(b), op(b.op) {}
+	BinaryOp(const BinaryOp& b, TypeSubs& ts);
+	
 
 	Value *logical_operator(enum Instruction::BinaryOps op, 
 		FunctionImpl *func, BasicBlock *block, BasicBlock *allocblock);
@@ -26,14 +27,26 @@ public:
 	virtual DataType getDataType() override;
 
 	virtual bool isConstExpr() override;
-	
-	Node *lhsn() {
+
+	Node *lhsn()
+	{
 		return node_children[0];
 	}
 
-	Node *rhsn() {
+	const Node *lhsn() const
+	{
+		return node_children[0];
+	}
+
+	Node *rhsn()
+	{
 		return node_children[1];
-	};
+	}
+
+	const Node *rhsn() const
+	{
+		return node_children[1];
+	}
 
 	Node* accept(Visitor &v) override {
 		return v.visit(*this);

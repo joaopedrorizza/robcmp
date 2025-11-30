@@ -28,7 +28,8 @@
 %type <mes> melements matrix
 
 %type <fps> function_params
-%type <fp> function_param
+%type <tps> template_call_params
+%type <fp> function_param template_call_param
 %type <pc> paramscall
 
 %type <ident> TOK_IDENTIFIER TOK_XIDENTIFIER ident_or_xident
@@ -137,12 +138,6 @@ function_decl : TOK_IDENTIFIER[type] TOK_IDENTIFIER[id] '(' function_params ')' 
 	func->setAttributes($fa);
 	$$ = func;
 }
-
-/*function_decl : TOK_TEMPLATE '<' template_param_list[tpl] '>' TOK_IDENTIFIER[type] TOK_IDENTIFIER[id] '(' function_params ')' function_attributes[fa] ';' {
-	TemplateDecl *templdecl = new TemplateDecl($type, $id, $function_params, std::move(*$tpl), @id);
-	templdecl->setAttributes($fa);
-	$$ = templdecl;
-}*/
 
 function_impl : TOK_IDENTIFIER[type] TOK_IDENTIFIER[id] '(' function_params ')' function_attributes[fa] '{' stmts '}'[ef] {
 	FunctionImpl *func = new FunctionImpl(buildTypes->getType($type, true), $id, $function_params,
@@ -519,12 +514,38 @@ call_or_cast : ident_or_xident[id] '(' paramscall ')' {
 	$$->setLocation(@id);
 }
 
-call_or_cast : ident_or_xident[id] '#' type_impls[tpl] '(' paramscall ')' {
+call_or_cast : ident_or_xident[id] '#' template_call_params '(' paramscall ')' {
     // converte o identificador (char*) para string C++
-
-    $$ = new TemplateCall($id, std::move(*$tpl), $paramscall, @id);
+    $$ = new TemplateCall($id, $template_call_params, $paramscall, @id);
     $$->setLocation(@id);
 }
+
+template_call_params:
+      template_call_params ',' template_call_param {
+            $1->append($3);
+            $$ = $1;
+      }
+    | template_call_param {
+            TemplateParams *tps = new TemplateParams();
+            tps->append($1);
+            $$ = tps;
+      }
+    | %empty {
+            $$ = new TemplateParams();
+      }
+;
+
+template_call_param : TOK_IDENTIFIER[type] {
+    DataType dt = buildTypes->getType($type);
+    $$ = new Variable("_templ_param_", dt, @type);
+}
+    | TOK_IDENTIFIER '[' ']' {
+            $$ = new ParamArray("paramArr", $1, @1);
+      }
+    | TOK_IDENTIFIER '[' ']' '[' ']' {
+            $$ = new ParamMatrix("paramMatriz", $1, @1);
+      }
+;
 
 paramscall : paramscall ',' expr {
 	$1->append($3);

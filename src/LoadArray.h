@@ -4,16 +4,17 @@
 #include "Node.h"
 #include "Identifier.h"
 
-class BaseArrayOper: public Node {
+class BaseArrayOper: public Cloneable<BaseArrayOper> {
 protected:
 	Identifier ident;
 	Node *position;
 	Node *position2;
 	Variable *leftValue = nullptr;
 public:
-	BaseArrayOper(const string& i, Node *pos, Node *pos2, location_t loc): 
-		Node(loc), ident(i, loc), position(pos), position2(pos2) {}
-	
+	BaseArrayOper(const string &i, Node *pos, Node *pos2, location_t loc) : Cloneable<BaseArrayOper>(loc), ident(i, loc), position(pos), position2(pos2) {}
+
+	BaseArrayOper(const BaseArrayOper &bar, TypeSubs &ts) : Cloneable<BaseArrayOper>(bar.getLoc()), ident(bar.ident.getFullName(), bar.getLoc()), position(bar.position), position2(bar.position2) {}
+
 	virtual Node* getElementIndex(Node *symbol);
 
 	Node *getPosition() {

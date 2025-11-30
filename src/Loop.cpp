@@ -2,7 +2,17 @@
 #include "Loop.h"
 #include "FunctionImpl.h"
 
-Loop::Loop(vector<Node*> &&stms, location_t loc) : Node(std::move(stms), loc) {
+Loop::Loop(vector<Node*> &&stms, location_t loc) : Cloneable<Loop>(std::move(stms), loc) {}
+
+Loop::Loop(const Loop& other, TypeSubs& ts)
+    : Cloneable<Loop>(other, ts) 
+{
+    for (Node* child : other.children()) {
+        if (child) {
+            Node* cloned = child->cloneTree(ts);
+            this->addChild(cloned);
+        }
+    }
 }
 
 Value *Loop::generate(FunctionImpl *func, BasicBlock *block, BasicBlock *allocblock) {

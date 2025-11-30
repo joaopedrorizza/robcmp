@@ -1,0 +1,17 @@
+// NORMALIZE: Normaliza para [0, 1]
+template<typename T>
+float normalize(T value, T min_val, T max_val) {
+ 
+    return (float(value) - float(min_val)) / (float(max_val) - float(min_val));
+}
+
+int16 main() {
+
+    value = normalize#int8(15,10,20);
+    
+  
+if(value == 0.5){
+        return 0;
+    }
+    return 1;
+}

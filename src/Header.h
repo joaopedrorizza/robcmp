@@ -59,3 +59,4 @@
 #include "TemplateParamNode.h"
 #include "TemplateCall.h"
 #include "Sizeof.h"
+#include "TemplateParams.h"

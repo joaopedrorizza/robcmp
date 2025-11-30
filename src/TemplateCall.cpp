@@ -58,48 +58,6 @@ static TemplateImpl *lookupTemplateImpl(Node *scope, const std::string &baseName
     return nullptr;
 }
 
-/*const std::string TemplateCall::instantiate(const string& baseName)
-{
-
-       ParamsCall *newParams = new ParamsCall();
-    for (Node *param : this->getParameters())
-    {
-        newParams->append(param);
-    }
-   //const std::string baseName = ident.getFullName();
-
-    // 1) lookup do TemplateImpl 
-    TemplateImpl *templImpl = lookupTemplateImpl(getScope(), baseName, getLoc());
-    if (!templImpl)
-    {
-        // NÃO é template → vira FunctionCall do nome base, usando os MESMOS argumentos
-        auto *call = new FunctionCall(baseName, newParams, getLoc()); // <-- AQUI
-        call->setScope(getScope());
-        if (leftValue)
-            call->setLeftValue(leftValue);
-        return call;
-    }
-
-    // 2) instanciar
-    Node *instNode = templImpl->generateFor(this->getTemplateArgs());
-
-    auto *concreteFunc = dynamic_cast<FunctionImpl *>(instNode);
-    if (!concreteFunc)
-    {
-        yyerrorcpp("Template instantiation did not produce a FunctionImpl for '" + baseName + "'.", this);
-        return nullptr;
-    }
-
-    //FunctionCall *call = new FunctionCall(concreteFunc->getName(), newParams, getLoc()); // <-- AQUI
-    //call->setScope(getScope());
-
-    //(log opcional)
-    std::cerr << "[TemplateCall] Lowered " << baseName << " to "
-              << concreteFunc->getName() << " with params from ParamsCall\n";
-
-    return concreteFunc->getName();
-}*/
-
 Value *TemplateCall::generate(FunctionImpl *, BasicBlock *, BasicBlock *)
 {
     // segurança: TemplateCall nunca deve chegar na geração de código

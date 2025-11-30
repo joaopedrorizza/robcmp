@@ -15,6 +15,34 @@ Scalar::Scalar(const string& ident, Node *e): Cloneable<Scalar, Variable>(ident,
 	addChild(e);
 }
 
+Scalar::Scalar(const Scalar& other, TypeSubs& ts)
+    : Cloneable<Scalar, Variable>(other.getName(), other.getLoc())
+{
+    // Clonar a expressão associada ao Scalar
+    Node* clonedExpr = nullptr;
+
+    if (other.getExpr())
+        clonedExpr = other.getExpr()->cloneTree(ts);
+
+    if (clonedExpr)
+        addChild(clonedExpr);
+
+    // // agora aplicar substituição de tipo (se houver)
+    // DataType oldDt = other.getDataType();
+
+    // // oldDt pode ser undefined nas primeiras fases, então checar
+    // if (oldDt != BuildTypes::undefinedType) {
+    //     const char* typeName = buildTypes->name(oldDt);
+
+    //     auto it = ts.find(typeName);
+    //     if (it != ts.end()) {
+    //         this->setDataType(it->second);
+    //     } else {
+    //         this->setDataType(oldDt);
+    //     }
+    // }
+}
+
 Value *Scalar::generate(FunctionImpl *func, BasicBlock *block, BasicBlock *allocblock) {
 
 	Node *isymbol = ident.getSymbol(getScope());
@@ -195,3 +223,5 @@ DataType Scalar::getDataType() {
 	}
 	return dt;
 }
+
+

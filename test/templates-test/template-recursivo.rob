@@ -1,10 +1,35 @@
+
+
+
+
+// IN_RANGE_EXCLUSIVE: Verifica se valor está no intervalo (low, high)
 template<typename T>
-T recursivo(T value) inline {
-    recursivo(value);
-    return value;
+constexpr bool in_range_exclusive(const T& value, const T& low, const T& high) {
+    return (low < value) && (value < high);
 }
 
-int16 main() {
-    a = recursivo#int8(0);
-    return a; // should return 1234
+// IS_EVEN: Verifica se é par
+template<typename T>
+constexpr bool is_even(const T& x) {
+    return (x % 2) == 0;
+}
+
+// IS_ODD: Verifica se é ímpar  
+template<typename T>
+constexpr bool is_odd(const T& x) {
+    return (x % 2) != 0;
+}
+
+
+// IS_BETWEEN: Verifica se c está entre a e b
+template<typename T>
+constexpr bool is_between(const T& c, const T& a, const T& b) {
+    return (a <= c && c <= b) || (b <= c && c <= a);
+}
+
+
+int main() {
+    
+    
+    return 0;
 }

@@ -12,6 +12,7 @@ class Stmts;
 class ArrayElements;
 class MatrixElements;
 class FunctionParams;
+class TemplateParams;
 class ParamsCall;
 class Structure;
 class ArrayElement;

@@ -3,9 +3,6 @@
 #include "FunctionImpl.h"
 #include "semantic/Visitor.h"
 
-// ---------------------------------------------------
-// Construtor sem else
-// ---------------------------------------------------
 If::If(Node *e, vector<Node*> &&tst, location_t loc)
 : Cloneable<If>(loc), expr(e)
 {
@@ -14,12 +11,9 @@ If::If(Node *e, vector<Node*> &&tst, location_t loc)
     thenst = new Node(std::move(tst), loc);
     addChild(thenst);
 
-    elsest = NULL; // sem else
+    elsest = nullptr;
 }
 
-// ---------------------------------------------------
-// Construtor com else
-// ---------------------------------------------------
 If::If(Node *e, vector<Node*> &&tst, vector<Node*> &&est, location_t loc)
 : If(e, std::move(tst), loc)
 {
@@ -27,19 +21,52 @@ If::If(Node *e, vector<Node*> &&tst, vector<Node*> &&est, location_t loc)
     addChild(elsest);
 }
 
-// ---------------------------------------------------
-// Construtor de clone (TypeSubs)
-// ---------------------------------------------------
 If::If(const If& other, TypeSubs& ts)
-: Cloneable<If>(other.getLoc()) // mantém posição
+    : Cloneable<If>(other, ts)  // importante!
 {
-    expr = other.expr ? other.expr->cloneTree(ts) : nullptr;
-    thenst = other.thenst ? other.thenst->cloneTree(ts) : nullptr;
-    elsest = other.elsest ? other.elsest->cloneTree(ts) : nullptr;
+    // ---- 1) Clone expr ----
+    if (other.expr)
+        expr = other.expr->cloneTree(ts);
+    else
+        expr = nullptr;
 
-    addChild(expr);
-    addChild(thenst);
-    if (elsest) addChild(elsest);
+    if (expr)
+        addChild(expr);
+
+    // ---- 2) Clone thenst ----
+    if (other.thenst)
+    {
+        // thenst é um Node que contém vários statements dentro
+        vector<Node*> newThen;
+
+        for (Node* st : other.thenst->children())
+        {
+            Node* cloned = st->cloneTree(ts);
+            newThen.push_back(cloned);
+        }
+
+        thenst = new Node(std::move(newThen), other.getLoc());
+        addChild(thenst);
+    }
+    else
+        thenst = nullptr;
+
+    // ---- 3) Clone elsest (se existir) ----
+    if (other.elsest)
+    {
+        vector<Node*> newElse;
+
+        for (Node* st : other.elsest->children())
+        {
+            Node* cloned = st->cloneTree(ts);
+            newElse.push_back(cloned);
+        }
+
+        elsest = new Node(std::move(newElse), other.getLoc());
+        addChild(elsest);
+    }
+    else
+        elsest = nullptr;
 }
 
 Value *If::generate(FunctionImpl *func, BasicBlock *block, BasicBlock *allocblock) {

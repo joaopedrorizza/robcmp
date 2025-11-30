@@ -32,13 +32,12 @@ public:
         for (auto p : fp->getParameters())
         {
             symbols[p->getName()] = p;
-            //p->setScope(this);
         }
     }
 
     Value *generate(FunctionImpl *, BasicBlock *, BasicBlock *allocblock) override;
 
-    FunctionImpl *generateFor(const vector<string> &concreteTypes, SourceLocation& loc);
+    FunctionImpl *generateFor(const vector<Variable *> &concreteTypes, SourceLocation& loc);
 
     string mangleName(string baseName, string returnType_, vector<string> &params);
 

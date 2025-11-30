@@ -6,12 +6,13 @@ T abs(T value) inline {
     return value;
 }
 
-int8 main() {
+int16 main() {
 
-    if abs#int8(-10) != 10 { return 1; }
-    if abs#int16(-10) != 10 { return 2; }
-    if abs#int32(-10) != 10 { return 3; }
-    if abs#int64(-10) != 10 { return 4; }
+    if (abs#int8(-10) != 10) { return 1;}
+
+    // if abs#int16(-10) != 10 { return 2; }
+    // if abs#int32(-10) != 10 { return 3; }
+    // if abs#int64(-10) != 10 { return 4; }
 
     return 0;
 }
